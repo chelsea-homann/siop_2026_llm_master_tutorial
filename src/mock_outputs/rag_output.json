@@ -1,0 +1,87 @@
+{
+  "Cared_About": {
+    "passages": [
+      {
+        "text": "Meridian Technologies is committed to fostering a culture where every employee feels valued and supported. Our Employee Assistance Programme (EAP) provides confidential counselling, financial guidance, and wellness resources to all full-time staff members. Managers are encouraged to conduct monthly one-on-one check-ins to understand individual needs and career aspirations.",
+        "source": "employee_handbook.md",
+        "score": 0.4821,
+        "relevance": "HIGH"
+      },
+      {
+        "text": "The annual 'Meridian Cares' week features team-building events, volunteer opportunities, and wellness workshops across all business units. In 2025, participation reached 67% of eligible employees, up from 54% the previous year. Feedback surveys indicate that participants report higher feelings of belonging.",
+        "source": "internal_newsletter_q4.md",
+        "score": 0.3915,
+        "relevance": "MODERATE"
+      }
+    ],
+    "llm_assessment": "The EAP and manager check-in policies directly address the 'feeling cared about' construct. However, the 67% participation rate for Meridian Cares week suggests that a third of employees may not be reached by these initiatives."
+  },
+  "Excited": {
+    "passages": [
+      {
+        "text": "Meridian's 2026 Strategic Vision outlines three growth pillars: AI-powered product development, expansion into the Asia-Pacific market, and sustainability-driven operations. CEO Priya Anand stated: 'We are building something that matters. Every team member plays a role in this transformation.'",
+        "source": "strategic_vision_2026.md",
+        "score": 0.4102,
+        "relevance": "HIGH"
+      },
+      {
+        "text": "Quarterly innovation sprints allow any employee to pitch product ideas directly to the leadership team. In FY2025, 12 employee-originated features shipped to production, representing 8% of the product roadmap.",
+        "source": "innovation_programme.md",
+        "score": 0.3567,
+        "relevance": "MODERATE"
+      }
+    ],
+    "llm_assessment": "The strategic vision and innovation sprints are designed to generate excitement and ownership. The relatively low percentage of employee-originated features (8%) may limit the felt impact of participation for most employees."
+  },
+  "Helpful_Info": {
+    "passages": [
+      {
+        "text": "All-hands town hall meetings are held quarterly and broadcast via live stream for remote employees. Meeting recordings and slide decks are posted to the internal knowledge base within 48 hours. Each town hall includes a dedicated Q&A segment where anonymised employee questions are addressed by the executive team.",
+        "source": "communications_policy.md",
+        "score": 0.4455,
+        "relevance": "HIGH"
+      },
+      {
+        "text": "The 'Meridian Pulse' weekly digest summarises key announcements, policy changes, and project milestones. Distribution covers all employee email addresses. Open rates averaged 41% in Q3 2025.",
+        "source": "communications_policy.md",
+        "score": 0.3890,
+        "relevance": "MODERATE"
+      }
+    ],
+    "llm_assessment": "Meridian has formal information-sharing channels. The 41% open rate for the weekly digest suggests that most employees do not actively engage with written communications, which may explain low Helpful_Info scores in some segments."
+  },
+  "Trust_Leaders": {
+    "passages": [
+      {
+        "text": "Meridian's Leadership Transparency Initiative (LTI), launched in January 2025, requires all directors and above to publish monthly 'State of the Team' updates visible to their entire reporting chain. The updates must include at least one challenge or setback alongside accomplishments.",
+        "source": "leadership_transparency_initiative.md",
+        "score": 0.5012,
+        "relevance": "HIGH"
+      },
+      {
+        "text": "The 360-degree feedback programme collects upward feedback on leadership behaviours annually. Results are shared with each leader and their manager. In the 2025 cycle, 78% of leaders received ratings above the 'effective' threshold on the trust dimension.",
+        "source": "performance_management.md",
+        "score": 0.3341,
+        "relevance": "MODERATE"
+      }
+    ],
+    "llm_assessment": "The LTI directly targets leadership trust through mandatory transparency. However, 22% of leaders falling below the effectiveness threshold on trust suggests room for improvement, and the initiative may not have cascaded to all levels equally."
+  },
+  "Morale": {
+    "passages": [
+      {
+        "text": "Meridian offers flexible work arrangements including hybrid schedules (minimum 2 days in-office), compressed work weeks for qualifying roles, and a 'recharge day' programme providing one additional paid day off per quarter. Eligibility varies by role and business unit.",
+        "source": "flexible_work_policy.md",
+        "score": 0.3788,
+        "relevance": "MODERATE"
+      },
+      {
+        "text": "The annual engagement survey results are published in aggregate within 30 days of collection. Action planning sessions are required for every team with an engagement score below the 25th percentile. In 2025, 34 teams triggered the action planning requirement.",
+        "source": "engagement_action_planning.md",
+        "score": 0.3455,
+        "relevance": "MODERATE"
+      }
+    ],
+    "llm_assessment": "Flexible work policies and engagement action planning address morale indirectly. The fact that 34 teams fell below the 25th percentile threshold indicates pockets of concern. The variable eligibility for flexible work may create perceived inequity between business units."
+  }
+}

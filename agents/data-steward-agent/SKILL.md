@@ -1,5 +1,5 @@
 ---
-name: data-steward
+name: data-steward-agent
 description: >
   Data Steward Agent — Survey data quality gatekeeper for I-O Psychology
   analyses. Screens survey data using best practices from the Survey Data

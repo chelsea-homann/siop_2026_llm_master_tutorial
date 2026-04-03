@@ -4,13 +4,13 @@
 
 Complete these steps **before the tutorial session** if possible.
 
-> **New to AI, Python, or coding in general?** Start with the [`docs/ai_foundations/`](docs/ai_foundations/) folder. It covers what AI models are, how agents work in research, and how to get API keys, all written for I-O psychologists with no prior technical experience.
+> **New to AI, Python, or coding in general?** Start with the [`resources/ai_foundations/`](resources/ai_foundations/) folder. It covers what AI models are, how agents work in research, and how to get API keys, all written for I-O psychologists with no prior technical experience.
 
 ---
 
 ## Prerequisites
 
-1. **Python 3.9 or later** from [python.org/downloads](https://www.python.org/downloads/)
+1. **Python 3.10+ or later** from [python.org/downloads](https://www.python.org/downloads/)
 2. **Git** from [git-scm.com](https://git-scm.com/)
 3. **A code editor** such as [Visual Studio Code](https://code.visualstudio.com/) or [PyCharm](https://www.jetbrains.com/pycharm/download/)
 
@@ -53,7 +53,7 @@ You should see `(venv)` at the beginning of your terminal prompt.
 pip install --upgrade pip
 pip install numpy pandas scipy scikit-learn matplotlib seaborn
 pip install kmodes gower
-pip install sentence-transformers
+pip install sentence-transformers # Required only if running RAG 
 ```
 
 If you plan to work with organizational documents (PDF, DOCX) for the RAG pipeline:
@@ -78,7 +78,7 @@ This checks all required packages, loads the synthetic datasets, and confirms ev
 
 The agent specifications in this repository are model-agnostic. The clustering and statistical validation steps run without any AI model. If you want to run the full pipeline with LLM-powered agents, you will need an API key.
 
-For detailed instructions on choosing a provider, getting API keys, cost estimates, local model options, and data privacy considerations, see [`docs/ai_foundations/install_and_access.md`](docs/ai_foundations/install_and_access.md).
+For detailed instructions on choosing a provider, getting API keys, cost estimates, local model options, and data privacy considerations, see [`resources/ai_foundations/install_and_access.md`](resources/ai_foundations/install_and_access.md).
 
 Quick version:
 

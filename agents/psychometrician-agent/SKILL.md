@@ -26,11 +26,11 @@ After groups have been discovered by K-Prototypes and/or LPA, this agent checks 
 - Calculates a Silhouette Score — how well-separated the groups are
 - Issues a "Model Quality Warning" if groups aren't actually distinct
 - Compares the K-Prototypes groups against the LPA groups to see if they agree (Adjusted Rand Index)
-- Interprets the ARI through the lens of inter-rater reliability — treating the two algorithms as independent "raters" classifying respondents
+- Interprets ARI as a measure of partition similarity between two independent clustering solutions, corrected for chance
 - Computes per-cluster validation metrics so the Narrator can report quality per segment
 - Produces a comprehensive audit report for the IO Psychologist
 
-**Key literature grounding:** Rousseeuw (1987) — silhouette coefficient for cluster validation; Hallgren (2012) — computing inter-rater reliability with appropriate statistics and interpretation bands; Steinley (2004) — properties of the Adjusted Rand Index including its expected value, variance, and relationship to chance; Hubert & Arabie (1985) — the original ARI formulation for comparing partitions.
+**Key literature grounding:** Rousseeuw (1987) — silhouette coefficient for cluster validation; Steinley (2004) — properties of the Adjusted Rand Index including its expected value, variance, and relationship to chance; Hubert & Arabie (1985) — the original ARI formulation for comparing partitions.
 
 ---
 
@@ -279,7 +279,7 @@ A cluster with a negative mean silhouette is, on average, closer to a neighborin
 
 ## Step 5: Cross-Model Validation (ARI)
 
-When two independent clustering solutions are available (e.g., K-Prototypes vs. LPA), compute the Adjusted Rand Index to assess agreement. This is conceptually an **inter-rater reliability** problem — two independent "raters" (algorithms) are classifying the same respondents, and we measure how much they agree beyond chance (Hallgren, 2012; Hubert & Arabie, 1985).
+When two independent clustering solutions are available (e.g., K-Prototypes vs. LPA), compute the Adjusted Rand Index to assess partition similarity. ARI measures agreement between two independent solutions over the same respondents, corrected for chance under a hypergeometric null distribution (Hubert & Arabie, 1985; Steinley, 2004).
 
 ### 5a. Compute ARI
 
@@ -298,7 +298,7 @@ if secondary_labels is not None:
 
 ### 5b. ARI Interpretation
 
-The ARI ranges from -1 (worse than chance) through 0 (chance agreement) to 1 (perfect agreement). Following the inter-rater reliability interpretation framework (Hallgren, 2012; Steinley, 2004):
+The ARI ranges from -1 (worse than chance) through 0 (chance agreement) to 1 (perfect agreement). Interpretation bands based on Steinley (2004) and Hubert & Arabie (1985):
 
 ```python
     if ari > 0.65:
@@ -648,7 +648,7 @@ Adhere to the **Distance Metric Contract** from the Project Manager:
 3. Gower Silhouette Score calculated with Rousseeuw (1987) interpretation bands
 4. Model Quality Warning issued if Silhouette < 0.25
 5. Per-cluster silhouette scores and quality grades assigned
-6. ARI calculated when two solutions available, with IRR-framework interpretation
+6. ARI calculated when two solutions available, with partition-similarity interpretation
 7. Consistency check between ARI and Silhouette completed
 8. Bias audit for outlier flagging completed
 9. Distance Metric Contract adhered to
@@ -668,7 +668,6 @@ If ARI and Silhouette are inconsistent:
 ## References
 
 - Rousseeuw, P. J. (1987). Silhouettes: A graphical aid to the interpretation and validation of cluster analysis. *Journal of Computational and Applied Mathematics, 20*, 53–65.
-- Hallgren, K. A. (2012). Computing inter-rater reliability for observational data: An overview and tutorial. *Tutorials in Quantitative Methods for Psychology, 8*(1), 23–34.
 - Hubert, L., & Arabie, P. (1985). Comparing partitions. *Journal of Classification, 2*(1), 193–218.
 - Steinley, D. (2004). Properties of the Hubert-Arabie adjusted Rand index. *Psychological Methods, 9*(3), 386–396.
 - Kaufman, L., & Rousseeuw, P. J. (2009). *Finding groups in data: An introduction to cluster analysis*. John Wiley & Sons.

@@ -6,16 +6,14 @@ flagging outliers by centroid distance, and (when two solutions
 are available) computing the Adjusted Rand Index (ARI) as a
 measure of cross-method agreement.
 
-The ARI is interpreted through an inter-rater reliability lens:
-two independent algorithms "rate" respondents into groups, and
-we measure how much they agree beyond chance (Hallgren, 2012).
+The ARI measures cross-method agreement between two independent
+clustering solutions, corrected for chance under a hypergeometric
+null distribution (Hubert & Arabie, 1985).
 
 References
 ----------
 Rousseeuw, P. J. (1987). Silhouettes: a graphical aid to cluster
     validation. J. Computational and Applied Mathematics, 20.
-Hallgren, K. A. (2012). Computing inter-rater reliability.
-    Tutorials in Quantitative Methods for Psychology, 8(1).
 Hubert, L. & Arabie, P. (1985). Comparing partitions. Journal
     of Classification, 2(1).
 Steinley, D. (2004). Properties of the Hubert-Arabie adjusted
@@ -65,9 +63,9 @@ def _interpret_silhouette(score):
 
 
 def _interpret_ari(ari):
-    """Map an ARI value to the inter-rater reliability framework.
+    """Map an ARI value to descriptive agreement bands.
 
-    Bands adapted from Hallgren (2012) and Steinley (2004).
+    Bands based on Steinley (2004) and Hubert & Arabie (1985).
     """
     if ari > config.ARI_STRONG:
         return "STRONG", "Both models capture similar latent structure"
@@ -223,9 +221,8 @@ def run_validation(df, labels_kproto, labels_lpa=None, feature_cols=None):
     if ari is not None:
         reasoning_parts.append(
             f"Cross-method agreement (ARI): {ari:.3f} ({ari_quality}). "
-            f"Interpreting through an inter-rater reliability framework "
-            f"(Hallgren, 2012): K-Prototypes and LPA act as two independent "
-            f"'raters' classifying respondents into groups. {ari_interp}"
+            f"K-Prototypes and LPA are compared as independent partition solutions "
+            f"over the same respondents. {ari_interp}"
         )
     reasoning = " ".join(reasoning_parts)
 

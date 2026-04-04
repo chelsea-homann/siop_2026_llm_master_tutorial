@@ -48,9 +48,9 @@ In this pipeline, organizational documents such as policies, leadership memos, a
 
 ## Adjusted Rand Index (ARI)
 
-A measure of agreement between two independent grouping solutions, adjusted for chance. Ranges from -1 (worse than chance) through 0 (chance-level agreement) to 1 (perfect agreement). In this pipeline, ARI is used as an **inter-rater reliability** metric, treating K-Prototypes and LPA as two independent "raters" classifying the same respondents, then measuring how much they agree (Hubert & Arabie, 1985; Hallgren, 2012).
+A measure of similarity between two independent clustering solutions, adjusted for chance. Ranges from -1 (worse than chance) through 0 (chance-level agreement) to 1 (perfect agreement). In this pipeline, ARI measures how much K-Prototypes and LPA agree on which respondents belong together, corrected for chance using a hypergeometric null distribution (Hubert & Arabie, 1985; Steinley, 2004).
 
-*In I-O terms:* If you had two research assistants independently sort employees into groups based on the same survey data, ARI measures how much their groupings overlap.
+*In I-O terms:* If two different analytical methods independently sorted employees into groups using the same survey data, ARI measures how much those groupings overlap.
 
 ## Silhouette Coefficient
 

@@ -71,7 +71,7 @@ OUTLIER_PERCENTILE = 90
 # independent careless-responding indicators to be removed (Curran, 2016)
 CARELESS_HURDLES = 2
 
-# Psychometrician: ARI interpretation bands (Hallgren, 2012; Steinley, 2004)
+# Psychometrician: ARI interpretation bands (Steinley, 2004; Hubert & Arabie, 1985)
 ARI_STRONG = 0.65
 ARI_MODERATE = 0.30
 

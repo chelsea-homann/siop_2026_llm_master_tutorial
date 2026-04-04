@@ -37,7 +37,7 @@ Two independent clustering methods run simultaneously to challenge each other:
 - **K-Prototypes** (Huang, 1998) groups people using both demographics and survey scores. It answers: *Who are these people?*
 - **Latent Profile Analysis** via Gaussian Mixture Models groups people using survey scores only, ignoring demographics. It answers: *What psychological profiles exist?*
 
-The **Psychometrician** then validates both solutions. Silhouette scores (Rousseeuw, 1987) measure cluster separation. The Adjusted Rand Index, interpreted through an inter-rater reliability framework (Hallgren, 2012), measures how much the two methods agree. Agreement means high confidence. Disagreement means demographics and psychology tell different stories -- which is itself an informative finding.
+The **Psychometrician** then validates both solutions. Silhouette scores (Rousseeuw, 1987) measure cluster separation. The Adjusted Rand Index (Hubert & Arabie, 1985) measures how much the two methods agree on which respondents belong together, corrected for chance. Agreement means high confidence. Disagreement means demographics and psychology tell different stories -- which is itself an informative finding.
 
 **Gate 2:** You review the cluster validation summary. How many segments? Are outliers being treated fairly?
 
@@ -235,7 +235,6 @@ This tutorial extends work presented at SIOP 2025: *Leveraging LLMs for Employee
 - Glaser, B. G., & Strauss, A. L. (2017). *The discovery of grounded theory.* Routledge. (Original work published 1967)
 - Graen, G. B., & Uhl-Bien, M. (1995). Relationship-based approach to leadership. *The Leadership Quarterly, 6*(2), 219-247.
 - Greenhaus, J. H., & Beutell, N. J. (1985). Sources of conflict between work and family roles. *Academy of Management Review, 10*(1), 76-88.
-- Hallgren, K. A. (2012). Computing inter-rater reliability for observational data. *Tutorials in Quantitative Methods for Psychology, 8*(1), 23-34.
 - Huang, Z. (1998). Extensions to the k-means algorithm for clustering large data sets with categorical values. *Data Mining and Knowledge Discovery, 2*(3), 283-304.
 - Kraimer, M. L., Seibert, S. E., Wayne, S. J., Liden, R. C., & Bravo, J. (2011). Antecedents and outcomes of organizational support for development. *Journal of Applied Psychology, 96*(3), 485-500.
 - Lewis, P., et al. (2020). Retrieval-augmented generation for knowledge-intensive NLP tasks. *NeurIPS, 33*, 9459-9474.

@@ -642,6 +642,6 @@ If **fewer than 3 suitable quotes** can be found for any cluster:
 
 ## References
 
-- Nguyen, D. C., & Welch, C. (2025). Generative artificial intelligence in qualitative data analysis: Analyzing — or just chatting? *Organizational Research Methods*, advance online publication. https://doi.org/10.1177/10944281251377154
+- Nguyen, D. C., & Welch, C. (2026). Generative Artificial Intelligence in Qualitative Data Analysis: Analyzing—Or Just Chatting? Organizational Research Methods, 29(1), 3-39.
 - Braun, V., & Clarke, V. (2006). Using thematic analysis in psychology. *Qualitative Research in Psychology, 3*(2), 77–101.
 - Creswell, J. W., & Poth, C. N. (2018). *Qualitative inquiry and research design: Choosing among five approaches* (4th ed.). SAGE Publications.

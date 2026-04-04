@@ -5,17 +5,14 @@ description: >
   Psychology clustering pipeline. Operates in two modes: Cross-Sectional
   (Phase 3, scanning cluster outputs for patterns outside the 12 predefined
   codebook constructs) and Longitudinal (post-Continuity Agent, analyzing
-  Weak-Fit respondents for genuinely new workforce segments). Applies
-  grounded theory principles (Glaser & Strauss, 2017) and thematic analysis
-  (Braun & Clarke, 2006) to surface emergent themes. Performs K+1 cluster
+  Weak-Fit respondents for genuinely new workforce segments). Performs K+1 cluster
   tests on Weak-Fit pools, classifies candidate themes as genuinely new,
   variant, or noise, and routes all candidates for human review at Gate 3.
   Works standalone for any exploratory theme discovery task or inside the
   pipeline. Use when the user mentions emergent themes, novel patterns,
-  drift detection, new cluster formation, Weak-Fit analysis, grounded
-  theory discovery, or codebook expansion. Also trigger on "emergence
-  analysis", "K+1 test", "Weak-Fit pool", "theme discovery", or
-  "trend detection".
+  drift detection, new cluster formation, Weak-Fit analysis, or codebook expansion. 
+  Also trigger on "emergence analysis", "K+1 test", "Weak-Fit pool", "theme discovery", 
+  or "trend detection".
 ---
 
 # Emergence Agent — Drift and Trend Discovery
@@ -40,7 +37,7 @@ This agent looks for what the codebook did not predict. After the clustering and
 - Compares baseline and follow-up construct profiles to identify systematic shifts
 - Distinguishes genuine new segments from individual drift and noise
 
-**Key literature grounding:** Glaser & Strauss (2017) established grounded theory as a method for discovering categories from data rather than imposing them from above; Braun & Clarke (2006) provide the foundational framework for thematic analysis, including the distinction between semantic and latent themes; Guest, MacQueen, & Namey (2012) extend thematic analysis to applied settings with structured codebooks; Corbin & Strauss (2015) detail procedures for grounded theory including theoretical sampling and constant comparison; Nylund, Asparouhov, & Muthen (2007) guide model selection for determining whether additional latent classes improve fit; Huang (1998) provides the K-Prototypes algorithm used in the K+1 test.
+**Key literature grounding:** Hinder, et. al. (2023) establish the formal taxonomy of concept drift detection including distributional shift tests and monitoring in evolving environments; Lu (2025) provides methods for clustering longitudinal data and detecting structural changes across survey waves; Rousseeuw (1987) grounds silhouette-based cluster validation for assessing whether K+1 solutions improve segment separation; Ployhart & Vandenberg (2010) provide the longitudinal research design framework for interpreting workforce population change over time; Nylund, Asparouhov, & Muthen (2007) guide model selection for determining whether additional latent classes improve fit; Huang (1998) provides the K-Prototypes algorithm used in the K+1 test.
 
 ---
 
@@ -137,10 +134,10 @@ def compute_construct_residuals(cluster_profiles, codebook_constructs, survey_co
     """
     Identify response patterns not explained by the 12 codebook constructs.
 
-    I-O Rationale: Grounded theory (Glaser & Strauss, 2017) requires
-    openness to patterns that fall outside pre-existing frameworks.
-    The codebook provides deductive structure, but inductive discovery
-    ensures completeness.
+    I-O Rationale: Directed content analysis (Hsieh & Shannon, 2005) uses
+    an existing framework as the starting point while remaining open to
+    patterns the codebook does not capture. Residual variance flagging
+    ensures structural completeness without assuming the codebook is exhaustive.
     """
     residuals = {}
 
@@ -369,22 +366,22 @@ def classify_candidate_theme(candidate, codebook_constructs):
     """
     Classify a candidate emergent theme using three criteria.
 
-    Classification rules (following Corbin & Strauss, 2015,
-    constant comparison method):
+    Classification rules (following Hinder, Vaquet, & Hammer (2023), concept drift
+    taxonomy; Rousseeuw, 1987, cluster separation criteria):
 
-    1. GENUINELY NEW: The theme describes a phenomenon not covered
-       by any of the 12 constructs, has convergent evidence from
-       multiple data sources, and appears in a meaningful proportion
-       of respondents.
+    1. EMERGENT: The candidate cluster exceeds the Novelty Delta threshold,
+       absorbs a meaningful proportion of Weak-Fit respondents, achieves
+       bootstrap stability, and shows statistically significant separation
+       from all baseline centroids across multiple dimensions.
 
-    2. VARIANT OF EXISTING: The theme is conceptually related to an
-       existing construct but captures a distinct facet, boundary
-       condition, or context-specific manifestation. The parent
-       construct should be noted.
+    2. DRIFT: The candidate is conceptually proximal to an existing
+       centroid, shows marginal Novelty Delta, and likely reflects
+       gradual distributional shift within an existing segment rather
+       than a structurally distinct new group.
 
-    3. NOISE: The theme appears in too few respondents, lacks
-       convergent evidence, or reflects idiosyncratic responses
-       rather than a systematic pattern.
+    3. NOISE: The candidate cluster is too small, lacks bootstrap
+       stability, or reflects idiosyncratic response patterns rather
+       than a systematic population-level shift.
     """
     # Step 1: Semantic similarity check against all 12 constructs
     max_similarity = 0
@@ -1076,10 +1073,12 @@ If the Emergence Agent cannot produce reliable findings:
 ## References
 
 - Braun, V., & Clarke, V. (2006). Using thematic analysis in psychology. *Qualitative Research in Psychology, 3*(2), 77-101.
-- Corbin, J., & Strauss, A. (2015). *Basics of qualitative research: Techniques and procedures for developing grounded theory* (4th ed.). SAGE Publications.
-- Glaser, B. G., & Strauss, A. L. (2017). *The discovery of grounded theory: Strategies for qualitative research.* Routledge. (Original work published 1967)
 - Guest, G., MacQueen, K. M., & Namey, E. E. (2012). *Applied thematic analysis.* SAGE Publications.
+- Hsieh, H. F., & Shannon, S. E. (2005). Three approaches to qualitative content analysis. Qualitative health research, 15(9), 1277-1288.
+- Hinder, F., Vaquet, V., & Hammer, B. (2023). One or Two Things We know about Concept Drift--A Survey on Monitoring Evolving Environments. arXiv preprint arXiv:2310.15826.
 - Huang, Z. (1998). Extensions to the k-means algorithm for clustering large data sets with categorical values. *Data Mining and Knowledge Discovery, 2*(3), 283-304.
+- Lu, Zihang. (2024). Clustering Longitudinal Data: A Review of Methods and Software Packages. International Statistical Review. 93. 10.1111/insr.12588. 
 - Nylund, K. L., Asparouhov, T., & Muthen, B. O. (2007). Deciding on the number of classes in latent class analysis and growth mixture modeling. *Structural Equation Modeling, 14*(4), 535-569.
+- Ployhart, R. E., & Vandenberg, R. J. (2010). Longitudinal research: The theory, design, and analysis of change. Journal of management, 36(1), 94-120.
 - Rousseeuw, P. J. (1987). Silhouettes: A graphical aid to the interpretation and validation of cluster analysis. *Journal of Computational and Applied Mathematics, 20*, 53-65.
 - Bordia, P., Hobman, E., Jones, E., Gallois, C., & Callan, V. J. (2004). Uncertainty during organizational change. *Journal of Business and Psychology, 18*(4), 507-532.

@@ -204,82 +204,182 @@ for col in categorical_cols[:3]:
 
 ---
 
-## Step 4: Cluster Separation Validation (Silhouette Analysis)
+## Step 3b: Detect Primary Clustering Method
 
-Compute the Silhouette Coefficient — the gold standard for assessing cluster quality (Rousseeuw, 1987).
-
-### 4a. Global Silhouette Score
+Before validation, determine which method produced the primary labels. This governs which validation metrics are appropriate.
 
 ```python
-from sklearn.metrics import silhouette_score, silhouette_samples
-
-if has_mixed:
-    # Gower distance matrix for mixed data
-    gower_dist = gower.gower_matrix(df[feature_cols])
-    sil_score = silhouette_score(gower_dist, primary_labels, metric='precomputed')
-    sil_samples = silhouette_samples(gower_dist, primary_labels, metric='precomputed')
+# Method detection
+if 'Cluster_KProto' in str(primary_labels.name) or 'Cluster_KProto_Final' in str(primary_labels.name):
+    primary_method = 'k_prototypes'
+    print("Primary clustering method: K-Prototypes (distance-based)")
+elif 'LPA_Profile' in str(primary_labels.name):
+    primary_method = 'lpa'
+    print("Primary clustering method: LPA (likelihood-based)")
 else:
-    sil_score = silhouette_score(df[numeric_cols], primary_labels, metric='euclidean')
-    sil_samples = silhouette_samples(df[numeric_cols], primary_labels, metric='euclidean')
-
-df['silhouette'] = sil_samples
-
-print(f"\nSILHOUETTE ANALYSIS (Rousseeuw, 1987)")
-print(f"  Global Silhouette Score: {sil_score:.4f}")
+    print("⚠️ Method unclear from label name. Attempting inference...")
+    # Fallback: if data has both categorical and numeric, assume K-Prototypes
+    if has_mixed:
+        primary_method = 'k_prototypes'
+        print("  → Inferred: K-Prototypes (mixed-type data detected)")
+    else:
+        primary_method = 'lpa'
+        print("  → Inferred: LPA (numeric-only data detected)")
 ```
 
-### 4b. Interpretation
+---
+
+## Step 4: Method-Specific Cluster Validation
+
+Validation strategy depends on the clustering method. K-Prototypes uses distance-based silhouette; LPA uses probabilistic fit indices.
+
+### 4a. K-Prototypes Validation (Distance-Based)
+
+Only execute if `primary_method == 'k_prototypes'`:
 
 ```python
-# Interpretation bands (Rousseeuw, 1987; Kaufman & Rousseeuw, 2009)
-if sil_score > 0.70:
-    interpretation = "Strong structure — clusters are well-defined and separated"
-    quality = "EXCELLENT"
-elif sil_score > 0.50:
-    interpretation = "Reasonable structure — meaningful groupings detected"
-    quality = "GOOD"
-elif sil_score > 0.25:
-    interpretation = "Weak structure — clusters overlap substantially"
-    quality = "FAIR"
-    print("  ⚠️ MODEL QUALITY WARNING: Weak cluster separation.")
-else:
-    interpretation = "No substantial structure — clusters may be artificial"
-    quality = "POOR"
-    print("  ⛔ MODEL QUALITY WARNING: Clusters are not well-separated.")
-    print("  Demographics may not be driving meaningful behavioral differences.")
-
-print(f"  Interpretation: {interpretation}")
-print(f"  Quality: {quality}")
+if primary_method == 'k_prototypes':
+    print("\n" + "=" * 65)
+    print("VALIDATION: K-PROTOTYPES (Distance-Based Silhouette)")
+    print("=" * 65)
+    
+    from sklearn.metrics import silhouette_score, silhouette_samples
+    
+    # Compute silhouette via Gower distance (mixed data) or Euclidean (numeric-only)
+    if has_mixed:
+        gower_dist = gower.gower_matrix(df[feature_cols])
+        sil_score = silhouette_score(gower_dist, primary_labels, metric='precomputed')
+        sil_samples = silhouette_samples(gower_dist, primary_labels, metric='precomputed')
+        distance_metric = "Gower"
+    else:
+        sil_score = silhouette_score(df[numeric_cols], primary_labels, metric='euclidean')
+        sil_samples = silhouette_samples(df[numeric_cols], primary_labels, metric='euclidean')
+        distance_metric = "Euclidean"
+    
+    df['silhouette'] = sil_samples
+    
+    print(f"\nSILHOUETTE ANALYSIS (Rousseeuw, 1987)")
+    print(f"  Distance Metric: {distance_metric}")
+    print(f"  Global Silhouette Score: {sil_score:.4f}")
 ```
 
-### 4c. Per-Cluster Silhouette
+### 4b. K-Prototypes Interpretation
 
 ```python
-print(f"\n  Per-Cluster Silhouette Scores:")
-cluster_sil = {}
-for label in unique_labels:
-    cluster_sils = sil_samples[primary_labels == label]
-    mean_sil = cluster_sils.mean()
-    pct_negative = (cluster_sils < 0).mean() * 100
-    cluster_sil[label] = mean_sil
+    # Interpretation bands (Rousseeuw, 1987; Kaufman & Rousseeuw, 2009)
+    if sil_score > 0.70:
+        interpretation = "Strong structure — clusters are well-defined and separated"
+        quality = "EXCELLENT"
+    elif sil_score > 0.50:
+        interpretation = "Reasonable structure — meaningful groupings detected"
+        quality = "GOOD"
+    elif sil_score > 0.25:
+        interpretation = "Weak structure — clusters overlap substantially"
+        quality = "FAIR"
+        print("  ⚠️ MODEL QUALITY WARNING: Weak cluster separation.")
+    else:
+        interpretation = "No substantial structure — clusters may be artificial"
+        quality = "POOR"
+        print("  ⛔ MODEL QUALITY WARNING: Clusters are not well-separated.")
+        print("  Demographics may not be driving meaningful behavioral differences.")
     
-    flag = ""
-    if mean_sil < 0:
-        flag = " ⛔ NEGATIVE — cluster is poorly defined"
-    elif pct_negative > 25:
-        flag = f" ⚠️ {pct_negative:.0f}% negative silhouettes"
+    print(f"  Interpretation: {interpretation}")
+    print(f"  Quality: {quality}")
     
-    print(f"    Cluster {label}: mean={mean_sil:.4f}, "
-          f"negative={pct_negative:.1f}%{flag}")
+    # Per-cluster silhouette
+    print(f"\n  Per-Cluster Silhouette Scores:")
+    cluster_sil = {}
+    for label in unique_labels:
+        cluster_sils = sil_samples[primary_labels == label]
+        mean_sil = cluster_sils.mean()
+        pct_negative = (cluster_sils < 0).mean() * 100
+        cluster_sil[label] = mean_sil
+        
+        flag = ""
+        if mean_sil < 0:
+            flag = " ⛔ NEGATIVE — cluster is poorly defined"
+        elif pct_negative > 25:
+            flag = f" ⚠️ {pct_negative:.0f}% negative silhouettes"
+        
+        print(f"    Cluster {label}: mean={mean_sil:.4f}, "
+              f"negative={pct_negative:.1f}%{flag}")
 ```
 
-A cluster with a negative mean silhouette is, on average, closer to a neighboring cluster than to its own centroid — it may not represent a real grouping.
+### 4c. LPA Validation (Likelihood-Based)
+
+Only execute if `primary_method == 'lpa'`:
+
+```python
+elif primary_method == 'lpa':
+    print("\n" + "=" * 65)
+    print("VALIDATION: LPA (Probabilistic Fit Indices)")
+    print("=" * 65)
+    
+    print("\n⚠️ NOTE: LPA uses probabilistic (BIC/SABIC/AIC/entropy/BLRT)")
+    print("validation, not distance-based silhouette. Retrieving metrics from")
+    print("LPA Agent's reflection log.\n")
+    
+    # Load LPA Agent's reflection log (if in pipeline mode)
+    lpa_reflection_path = f'{REPO_DIR}/reflection_logs/lpa_agent_reflection.json'
+    if os.path.exists(lpa_reflection_path):
+        import json
+        with open(lpa_reflection_path, 'r') as f:
+            lpa_reflection = json.load(f)
+        
+        opt_k = lpa_reflection['optimal_model']['K']
+        opt_bic = lpa_reflection['optimal_model']['BIC']
+        opt_sabic = lpa_reflection['enumeration'].get('SABIC', 'N/A')
+        opt_entropy = lpa_reflection['optimal_model']['entropy']
+        pct_ambiguous = lpa_reflection['classification']['pct_ambiguous']
+        
+        print(f"LPA PROFILE VALIDATION METRICS")
+        print(f"  Optimal K: {opt_k}")
+        print(f"  BIC: {opt_bic:.2f}")
+        print(f"  SABIC: {opt_sabic}")
+        print(f"  Entropy (classification clarity): {opt_entropy:.4f}")
+        print(f"  Psychologically Ambiguous (posterior < 0.70): {pct_ambiguous}%")
+        
+        # Interpretation
+        if opt_entropy > 0.80:
+            entropy_quality = "EXCELLENT (profiles well-separated)"
+        elif opt_entropy > 0.60:
+            entropy_quality = "GOOD (profiles acceptably separated)"
+        else:
+            entropy_quality = "POOR (profiles overlapping substantially)"
+            print(f"  ⚠️ MODEL QUALITY WARNING: Low classification entropy.")
+        
+        if pct_ambiguous > 25:
+            print(f"  ⚠️ >25% ambiguous assignments — profiles may not be distinct.")
+        
+        print(f"  Classification Quality: {entropy_quality}")
+        
+        # Average posterior probability matrix
+        if 'classification_matrix_path' in lpa_reflection:
+            print(f"\n  Average Posterior Probability Matrix:")
+            print(f"  (See lpa_classification_matrix.csv for details)")
+        
+        # Store for later routing
+        lpa_validation = {
+            'K': opt_k,
+            'BIC': opt_bic,
+            'entropy': opt_entropy,
+            'pct_ambiguous': pct_ambiguous
+        }
+    else:
+        print("⚠️ LPA reflection log not found. Skipping probabilistic validation.")
+        print("    Ensure LPA Agent has completed before Psychometrician validation.")
+        lpa_validation = None
+```
+
+
 
 ---
 
 ## Step 5: Cross-Model Validation (ARI)
 
 When two independent clustering solutions are available (e.g., K-Prototypes vs. LPA), compute the Adjusted Rand Index to assess partition similarity. ARI measures agreement between two independent solutions over the same respondents, corrected for chance under a hypergeometric null distribution (Hubert & Arabie, 1985; Steinley, 2004).
+
+**Critical Note:** ARI compares partitions (group assignments) regardless of how those groups were derived. In pipeline mode, you are comparing a distance-based solution (K-Prototypes) to a likelihood-based solution (LPA). They use fundamentally different optimization criteria. High ARI indicates both methods found similar structure despite different frameworks; low ARI may indicate they capture complementary but different aspects of the data.
 
 ### 5a. Compute ARI
 
@@ -291,9 +391,17 @@ if secondary_labels is not None:
     ari = adjusted_rand_score(primary_labels, secondary_labels)
     
     print(f"\nCROSS-MODEL VALIDATION (ARI)")
-    print(f"  Model 1: {primary_label_name} (K={len(np.unique(primary_labels))})")
+    print(f"  Model 1: {primary_label_name} (K={len(np.unique(primary_labels))}) — {primary_method}")
     print(f"  Model 2: {secondary_label_name} (K={len(np.unique(secondary_labels))})")
     print(f"  Adjusted Rand Index: {ari:.4f}")
+    
+    # Method pairing note
+    if primary_method == 'k_prototypes':
+        print(f"\n  ⚠️ METHOD MISMATCH NOTE:")
+        print(f"  Model 1 (K-Prototypes) optimizes: Minimize within-cluster distance")
+        print(f"  Model 2 (LPA) optimizes: Maximize likelihood under Gaussian mixture")
+        print(f"  ARI measures partition agreement despite different optimization.")
+        print(f"  This is appropriate and informative but reflects different constructs.")
 ```
 
 ### 5b. ARI Interpretation
@@ -339,26 +447,31 @@ The ARI ranges from -1 (worse than chance) through 0 (chance agreement) to 1 (pe
               f"({overlap}/{total} = {overlap/total:.1%})")
 ```
 
-### 5d. Consistency Check
+### 5d. Consistency Check (K-Prototypes Only)
 
-If ARI and Silhouette are inconsistent, flag for the Project Manager:
+If both K-Prototypes silhouette and ARI are available, check for inconsistencies:
 
 ```python
     inconsistent = False
-    if sil_score > 0.50 and ari < 0.30:
-        print(f"\n  ⚠️ INCONSISTENCY: High Silhouette ({sil_score:.3f}) but low ARI ({ari:.3f})")
-        print(f"  Behavioral segments exist but don't map to psychological profiles.")
-        print(f"  This may indicate that demographics and survey responses capture")
-        print(f"  different latent structures.")
-        inconsistent = True
-    elif sil_score < 0.25 and ari > 0.65:
-        print(f"\n  ⚠️ INCONSISTENCY: Low Silhouette ({sil_score:.3f}) but high ARI ({ari:.3f})")
-        print(f"  Both models agree on groupings, but the groupings are poorly separated.")
-        print(f"  The consensus may be an artifact of shared methodology, not real structure.")
-        inconsistent = True
-    
-    if inconsistent and pipeline_mode:
-        print(f"  → Flagging for Project Manager's Cross-Model Consistency Review.")
+    if primary_method == 'k_prototypes' and 'sil_score' in dir():
+        if sil_score > 0.50 and ari < 0.30:
+            print(f"\n  ⚠️ INCONSISTENCY: High Silhouette ({sil_score:.3f}) but low ARI ({ari:.3f})")
+            print(f"  Behavioral segments exist but don't map to psychological profiles.")
+            print(f"  This may indicate that demographics and survey responses capture")
+            print(f"  different latent structures.")
+            inconsistent = True
+        elif sil_score < 0.25 and ari > 0.65:
+            print(f"\n  ⚠️ INCONSISTENCY: Low Silhouette ({sil_score:.3f}) but high ARI ({ari:.3f})")
+            print(f"  Both models agree on groupings, but the groupings are poorly separated.")
+            print(f"  The consensus may be an artifact of shared methodology, not real structure.")
+            inconsistent = True
+        
+        if inconsistent and pipeline_mode:
+            print(f"  → Flagging for Project Manager's Cross-Model Consistency Review.")
+    elif primary_method == 'lpa':
+        print(f"\n  Consistency check not applicable for LPA (uses likelihood, not distance).")
+        print(f"  Review entropy and ARI separately for interpretation.")
+        inconsistent = False
 else:
     print("\nCross-model validation skipped — only one clustering solution available.")
     ari = None
@@ -578,19 +691,44 @@ with open(f'{output_dir}/reflection_logs/psychometrician_reflection.json', 'w') 
 
 ### 9c. Pipeline Routing
 
+**K-Prototypes Mode:**
+
 | Artifact | Recipient |
 |----------|-----------|
 | Outlier list + silhouette scores | **Narrator Agent** (exclude outliers from quote selection) |
-| Silhouette score + ARI + quality assessment | **IO Psychologist** (for report) |
-| Inconsistency flags (if any) | **Project Manager** (for cross-model consistency review) |
+| Silhouette score + per-cluster grades | **IO Psychologist** (for report) |
+| ARI (if secondary solution available) | **Project Manager** (for cross-model review) |
 | Per-cluster scorecard | **Narrator Agent** (report quality per cluster) |
+| Inconsistency flags | **Project Manager** (for cross-model consistency review) |
 
-### 9d. Governance Contract
+**LPA Mode:**
 
-Adhere to the **Distance Metric Contract** from the Project Manager:
-- Use **Gower distance** for mixed-data computations (K-Prototypes validation)
-- Use **Euclidean distance** on standardized data for numeric-only validation (LPA)
-- Log any deviations with justification
+| Artifact | Recipient |
+|----------|-----------|
+| Posterior probabilities + ambiguity flags | **Narrator Agent** (exclude ambiguous cases from quote selection) |
+| BIC / SABIC / entropy / BLRT summary | **IO Psychologist** (for report) |
+| ARI (if secondary solution available) | **Project Manager** (for cross-model review) |
+| % Psychologically Ambiguous | **Narrator Agent** (report classification quality) |
+| Method mismatch caveat | **Project Manager** (document framework differences) |
+
+### 9d. Distance Metric & Fit Index Contract
+
+Adhere to method-specific validation requirements:
+
+**K-Prototypes (Distance-Based):**
+- Use **Gower distance** for mixed-data silhouette computation
+- Use **Euclidean distance** on standardized numeric data (if numeric-only)
+- Log distance metric used and justification
+
+**LPA (Likelihood-Based):**
+- Retrieve **BIC, SABIC, AIC, entropy, BLRT** from LPA Agent reflection log
+- Do NOT compute silhouette on LPA labels (conceptually inappropriate)
+- Document that validation uses probabilistic fit indices, not distance metrics
+
+**Cross-Method (ARI):**
+- Compute ARI regardless of primary method
+- **Always annotate** that ARI measures partition agreement despite different optimization frameworks
+- Flag any inconsistencies between method-specific metrics (Silhouette vs. Entropy) in the Project Manager summary
 
 ---
 
@@ -604,13 +742,12 @@ Adhere to the **Distance Metric Contract** from the Project Manager:
   Status: COMPLETE
   Run_ID: [uuid]
   Mode: [Pipeline / Standalone]
+  Primary Method: [K-Prototypes / LPA]
 
+  ---- K-PROTOTYPES VALIDATION ----
+  [Only if primary_method == k_prototypes]
+  
   Distance Metric: [Gower / Euclidean]
-
-  K-Prototypes Diagnostics:
-    - Outliers flagged (top [N]%): [count] ([%])
-    - Distance threshold: [value]
-    - Outlier demographic bias: [flags or "None"]
 
   Cluster Separation (Rousseeuw, 1987):
     - Global Silhouette Score: [value]
@@ -618,25 +755,49 @@ Adhere to the **Distance Metric Contract** from the Project Manager:
     - Model Quality Warning: [YES/NO]
     - Per-cluster grades: [A/B/C/D per cluster]
 
-  Cross-Model Validation (Hallgren, 2012; Hubert & Arabie, 1985):
-    - ARI (K-Prototypes vs. LPA): [value]
-    - Interpretation: [Strong/Moderate/Weak agreement]
-    - Consistency check: [PASSED / INCONSISTENCY FLAGGED]
+  Outliers:
+    - Count: [n] ([%])
+    - Threshold (percentile): [P90 or custom]
+    - Demographic bias detected: [YES/NO]
 
-  Per-Cluster Scorecard:
-    [Table: cluster, n, silhouette, grade]
+  ---- LPA VALIDATION ----
+  [Only if primary_method == lpa]
+
+  Fit Indices (from LPA Agent reflection log):
+    - BIC: [value]
+    - SABIC: [value]
+    - AIC: [value]
+    - Entropy: [value]
+    - BLRT p-value (K vs K-1): [value]
+
+  Classification Quality:
+    - Entropy quality: [EXCELLENT/GOOD/POOR]
+    - Psychologically Ambiguous: [%]
+    - Diagonal average posterior: [min–max range]
+
+  ---- CROSS-MODEL (Both Methods) ----
+  [If secondary solution available]
+
+  Cross-Model Validation (ARI):
+    - ARI (Model 1 vs. Model 2): [value]
+    - Interpretation: [Strong/Moderate/Weak agreement]
+    - Method mismatch caveat: [documented]
+    - Consistency check: [PASSED / INCONSISTENCY FLAGGED / N/A]
+
+  ---- ARTIFACTS & ROUTING ----
 
   Artifacts Created:
     - psychometrician_audit.csv
     - psychometrician_scorecard.csv
     - cluster_validation_summary.md
-    - psychometrician_silhouette_plot.png
-    - psychometrician_distance_distribution.png
-    - psychometrician_cross_model_heatmap.png
+    - psychometrician_silhouette_plot.png (K-Proto only)
+    - psychometrician_distance_distribution.png (K-Proto only)
+    - psychometrician_cross_model_heatmap.png (if ARI available)
     - /reflection_logs/psychometrician_reflection.json
-    - /audit_reports/psychometrician_bias_audit.md
 
-  Routing Decision: → [Narrator + IO Psychologist / User]
+  Routing Decision:
+    - K-Proto: → [Narrator + IO Psychologist + Project Manager (if ARI)]
+    - LPA: → [Narrator + IO Psychologist + Project Manager (if ARI)]
 
 ============================================
 ```

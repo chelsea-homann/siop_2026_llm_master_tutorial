@@ -420,6 +420,8 @@ Note: sklearn's BIC/AIC use a slightly different parameterization than Mplus. Re
 
 Model selection is the most consequential decision in LPA. No single fit index is definitive — use convergent evidence from multiple criteria, combined with substantive interpretability.
 
+**Critical:** LPA uses likelihood-based model comparison, not distance-based metrics like silhouette. Silhouette assumes Euclidean/geometric distance and is inappropriate for GMM profiles. The Psychometrician Agent will retrieve your probabilistic fit indices from the reflection log for comprehensive audit reporting.
+
 ### 5a. Build the Comparison Table
 
 ```python
@@ -809,11 +811,15 @@ with open(f'{output_dir}/reflection_logs/lpa_agent_reflection.json', 'w') as f:
 
 ### 10c. Pipeline Routing (Pipeline Mode Only)
 
-| Artifact | Recipient |
-|----------|-----------|
-| `LPA_Profile` labels + posterior probabilities | **Psychometrician Agent** (for ARI cross-validation with K-Prototypes) |
-| Psychological Fingerprints + profile means | **Narrator Agent** (for narrative synthesis) |
-| Enumeration results + reflection log | **Project Manager** (for governance documentation) |
+| Artifact | Recipient | How It's Used |
+|----------|-----------|---------------|
+| `LPA_Profile` labels + posterior probabilities | **Psychometrician Agent** | Ambiguity flagging + ARI cross-validation with K-Prototypes |
+| Reflection log (BIC/SABIC/AIC/entropy/BLRT) | **Psychometrician Agent** | Probabilistic fit index summary for comprehensive audit |
+| Psychological Fingerprints + profile means | **Narrator Agent** | Narrative synthesis + evidence-based persona development |
+| Enumeration results + model comparison | **Project Manager** | Governance documentation (model selection rationale) |
+| Average posterior probability matrix | **Narrator Agent** | Classification quality context for quote selection |
+
+**Note:** The Psychometrician Agent will retrieve your validation metrics (BIC, SABIC, entropy) from the reflection log and present them in the appropriate probabilistic framework — NOT via silhouette distance metrics.
 
 ### 10d. Standalone Summary (Standalone Mode Only)
 

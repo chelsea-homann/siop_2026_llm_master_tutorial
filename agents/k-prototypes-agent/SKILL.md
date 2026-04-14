@@ -289,13 +289,16 @@ else:
 print(f"\nElbow detected at K={elbow_k}")
 ```
 
-### 5b. Silhouette Validation (using Gower distance for mixed data)
+### 5b. Silhouette Validation (Enumeration Guide Only)
+
+This step computes silhouette scores during enumeration to **help guide K selection** but does NOT replace the comprehensive silhouette audit performed by the **Psychometrician Agent**.
 
 ```python
 import gower
 from sklearn.metrics import silhouette_score
 
 # Compute Gower distance matrix for mixed data
+# This is for K selection guidance only
 gower_dist = gower.gower_matrix(df_complete[numeric_cols + categorical_cols])
 
 silhouette_scores = {}
@@ -311,6 +314,11 @@ for k in k_range:
 
 best_sil_k = max(silhouette_scores, key=silhouette_scores.get)
 print(f"\nBest Silhouette at K={best_sil_k} ({silhouette_scores[best_sil_k]:.4f})")
+
+print("\n⚠️ NOTE: These are enumeration-phase silhouette scores for K selection.")
+print("The Psychometrician Agent will perform comprehensive silhouette audit")
+print("on the final model, including per-cluster analysis, outlier flagging,")
+print("bias audit, and comparison to LPA (via ARI).")
 ```
 
 ### 5c. Multi-Criteria Selection
@@ -631,11 +639,15 @@ with open(f'{output_dir}/reflection_logs/kprototypes_agent_reflection.json', 'w'
 
 ### 10c. Pipeline Routing
 
-| Artifact | Recipient |
-|----------|-----------|
-| `Cluster_KProto` labels | **Psychometrician Agent** (for silhouette validation + outlier flagging) |
-| Centroids | **Psychometrician Agent** (for centroid distance computation) |
-| Cost curve + enumeration results | **Project Manager** (for governance) |
+The K-Prototypes agent's outputs feed into the validation pipeline. Silhouette, outlier, ARI, and consistency analysis happen downstream in the **Psychometrician Agent**.
+
+| Artifact | Recipient | Purpose |
+|----------|-----------|---------|
+| `Cluster_KProto_Final` labels | **Psychometrician Agent** | Comprehensive silhouette audit + outlier flagging |
+| Centroids (numeric + categorical) | **Psychometrician Agent** | Centroid distance computation for outlier identification |
+| Cluster size summary | **Narrator Agent** | Narrative context (cluster proportions) |
+| Cost curve + enumeration results | **Project Manager** | Governance documentation (K selection rationale) |
+| Bootstrap ARI (stability) | **Project Manager** | Cluster stability assessment |
 
 ### 10d. Standalone Delivery
 

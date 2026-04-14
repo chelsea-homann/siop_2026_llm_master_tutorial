@@ -546,7 +546,7 @@ df_complete['LPA_Profile'] = labels
 df_complete['posterior_prob'] = max_posteriors
 
 # Ambiguity flagging
-AMBIGUITY_THRESHOLD = 0.70
+AMBIGUITY_THRESHOLD = 0.80
 df_complete['is_ambiguous'] = max_posteriors < AMBIGUITY_THRESHOLD
 
 # Classification diagnostics
@@ -564,13 +564,13 @@ print(f"\n  Psychologically Ambiguous (posterior < {AMBIGUITY_THRESHOLD}): "
       f"{n_ambiguous} ({pct_ambiguous:.1f}%)")
 
 if pct_ambiguous > 25:
-    print("  ⚠️ >25% ambiguous. Profiles may not be well-separated.")
+    print("  >25% ambiguous. Profiles may not be well-separated.")
     print("  Consider a solution with fewer profiles or different covariance structure.")
 ```
 
 ### Average Posterior Probability Matrix
 
-This matrix (also called the classification probability table) shows how well profiles are separated. Diagonal values should be ≥ 0.70 (Nagin, 2005):
+This matrix (also called the classification probability table) shows how well profiles are separated. Diagonal values should be ≥ 0.80 (Nagin, 2005):
 
 ```python
 avg_post_matrix = np.zeros((optimal_k, optimal_k))
@@ -678,7 +678,7 @@ plt.close()
 
 ```python
 fig, ax = plt.subplots(figsize=(10, 5))
-ax.hist(max_posteriors, bins=50, edgecolor='black', alpha=0.7)
+ax.hist(max_posteriors, bins=50, edgecolor='black', alpha=0.8)
 ax.axvline(x=AMBIGUITY_THRESHOLD, color='red', linestyle='--',
            label=f'Ambiguity threshold ({AMBIGUITY_THRESHOLD})')
 ax.set_xlabel('Maximum Posterior Probability')
@@ -862,7 +862,7 @@ Present results directly to the user in a clear, non-technical narrative — fol
 
   Classification:
     - Profile sizes: [list per profile]
-    - Psychologically Ambiguous (posterior < 0.70): [count] ([%])
+    - Psychologically Ambiguous (posterior < 0.80): [count] ([%])
     - Average diagonal posterior: [min – max range]
 
   Psychological Fingerprints:
@@ -901,7 +901,7 @@ Present results directly to the user in a clear, non-technical narrative — fol
 4. Selected model converged
 5. All respondents assigned LPA_Profile labels with posterior probabilities
 6. Ambiguous respondents flagged and quantified
-7. Average posterior probability matrix reported with diagonal values ≥ 0.70
+7. Average posterior probability matrix reported with diagonal values ≥ 0.80
 8. Psychological Fingerprints generated for every profile
 9. Fit index plots, profile plots, and posterior distribution saved
 10. Reflection log saved

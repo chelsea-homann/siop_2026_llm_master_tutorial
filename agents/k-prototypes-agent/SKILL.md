@@ -794,7 +794,7 @@ with open(f'{output_dir}/reflection_logs/kprototypes_agent_reflection.json', 'w'
 
 ### 10c. Pipeline Routing
 
-The K-Prototypes agent's outputs feed into the validation pipeline. Silhouette, outlier, ARI, and consistency analysis happen downstream in the **Psychometrician Agent**.
+The K-Prototypes agent's outputs feed into the validation pipeline. Silhouette, outlier, ARI, and consistency analysis happen downstream in the **Psychometrician Agent**. When routing K-Proto labels to the Psychometrician for cross-method ARI, also pass the LPA ambiguity rate from the LPA Agent. Flag to the IO Psychologist if ARI is below 0.40 AND LPA ambiguity rate exceeds 20% — in this case, low ARI may reflect classification uncertainty rather than genuine method disagreement.
 
 | Artifact | Recipient | Purpose |
 |----------|-----------|---------|

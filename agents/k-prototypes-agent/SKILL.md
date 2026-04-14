@@ -547,6 +547,8 @@ plt.close()
 
 ## Step 9: Bias Audit
 
+### 9a. Standard Bias Audit (Single Gamma)
+
 Check whether clusters are trivially recapitulating a single demographic variable:
 
 ```python
@@ -555,10 +557,19 @@ import itertools
 
 print("\nBIAS AUDIT: Are clusters just mirroring demographics?")
 print("-" * 55)
+bias_audit_single = {}
+
 for demo_col in categorical_cols:
     ct = pd.crosstab(df_complete['Cluster_KProto'], df_complete[demo_col])
     chi2, p, dof, expected = chi2_contingency(ct)
     cramers_v = np.sqrt(chi2 / (len(df_complete) * (min(ct.shape) - 1)))
+    
+    bias_audit_single[demo_col] = {
+        'cramers_v': cramers_v,
+        'chi2': chi2,
+        'p_value': p,
+        'dof': dof
+    }
     
     if cramers_v > 0.50:
         flag = "⚠️ STRONG association — clusters may be trivially demographic"
@@ -571,6 +582,129 @@ for demo_col in categorical_cols:
 
 print("\nNote: Some demographic association is expected and acceptable.")
 print("Clusters become concerning only if they PERFECTLY replicate a single demographic.")
+```
+
+### 9b. Gamma Impact Audit (Cross-Gamma Comparison)
+
+**Recommendation 2.8:** Diagnose whether demographic association is driven by gamma choice. Run K-Prototypes at γ = {0.5, 1.0, 2.0} (or user-specified range) and compare Cramér's V trends. If V increases monotonically with gamma, the categorical variables are being over-weighted by gamma itself—not because of true behavioral-demographic segmentation.
+
+```python
+print("\n" + "=" * 70)
+print("GAMMA IMPACT AUDIT: Cross-Gamma Demographic Association Analysis")
+print("=" * 70)
+print("\nRationale: Gamma controls categorical vs. numeric distance weighting.")
+print("If Cramér's V increases monotonically with gamma, demographic association")
+print("is likely a confound of gamma choice, not true clustering structure.\n")
+
+# Define gamma test range
+gamma_test_values = [0.5, 1.0, 2.0]  # Can be customized by user
+gamma_audit_results = {}
+
+for test_gamma in gamma_test_values:
+    print(f"\nRunning K-Prototypes at gamma={test_gamma}...")
+    
+    # Re-fit model at alternative gamma
+    kp_test = KPrototypes(
+        n_clusters=optimal_k,
+        init='Cao',
+        n_init=N_INIT,
+        verbose=0,
+        random_state=SEED,
+        gamma=test_gamma
+    )
+    test_labels = kp_test.fit_predict(df_complete[categorical_cols + numeric_cols],
+                                      categorical_cols=list(range(len(categorical_cols))))
+    df_complete[f'Cluster_KProto_gamma{test_gamma}'] = test_labels
+    
+    gamma_audit_results[test_gamma] = {}
+    
+    # Compute Cramér's V for each demographic at this gamma
+    for demo_col in categorical_cols:
+        ct = pd.crosstab(df_complete[f'Cluster_KProto_gamma{test_gamma}'], 
+                         df_complete[demo_col])
+        chi2, p, dof, expected = chi2_contingency(ct)
+        cramers_v = np.sqrt(chi2 / (len(df_complete) * (min(ct.shape) - 1)))
+        gamma_audit_results[test_gamma][demo_col] = cramers_v
+
+# Convert to DataFrame for trend analysis
+gamma_audit_df = pd.DataFrame(gamma_audit_results).T
+print("\n" + "-" * 70)
+print("Cramér's V Across Gamma Values:")
+print("-" * 70)
+print(gamma_audit_df.to_string())
+
+# Detect monotonic trends
+print("\n" + "-" * 70)
+print("Monotonic Trend Analysis:")
+print("-" * 70)
+
+gamma_confound_flag = False
+for demo_col in categorical_cols:
+    v_values = [gamma_audit_results[g][demo_col] for g in sorted(gamma_test_values)]
+    
+    # Check if monotonically increasing
+    monotonic_inc = all(v_values[i] <= v_values[i+1] for i in range(len(v_values)-1))
+    # Check if monotonically decreasing
+    monotonic_dec = all(v_values[i] >= v_values[i+1] for i in range(len(v_values)-1))
+    
+    if monotonic_inc and v_values[-1] > v_values[0] * 1.1:  # >10% increase
+        print(f"⚠️  {demo_col}: V increases monotonically ({v_values[0]:.3f} → {v_values[-1]:.3f})")
+        print(f"    → Gamma is over-weighting categorical variables.")
+        gamma_confound_flag = True
+    elif monotonic_dec and v_values[-1] < v_values[0] * 0.9:  # >10% decrease
+        print(f"✅ {demo_col}: V decreases with gamma (expected pattern)")
+    else:
+        print(f"✓  {demo_col}: No monotonic trend (V stable or mixed)")
+
+if gamma_confound_flag:
+    print("\n🚨 GAMMA CONFOUND DETECTED:")
+    print("   The selected gamma may be artificially amplifying demographic associations.")
+    print("   Consider:")
+    print("   1. Lowering gamma (currently {:.1f}) to reduce categorical over-weighting".format(gamma))
+    print("   2. Excluding high-V demographics from clustering inputs")
+    print("   3. Investigating whether demographic variables should be used at all")
+else:
+    print("\n✅ GAMMA STABLE: Demographic associations are not gamma-confounded.")
+    print("   Current gamma={:.1f} is appropriate for this data.".format(gamma))
+
+# Store gamma audit in reflection
+gamma_audit_summary = {
+    'test_gammas': gamma_test_values,
+    'cramers_v_by_gamma': gamma_audit_results,
+    'confound_detected': gamma_confound_flag
+}
+```
+
+### 9c. Bias Audit Interpretation
+
+Document both findings and their implications:
+
+```python
+print("\n" + "=" * 70)
+print("BIAS AUDIT SUMMARY")
+print("=" * 70)
+
+print(f"\nSingle-Gamma Findings (γ={gamma}):")
+strongest_demo = max(bias_audit_single.items(), key=lambda x: x[1]['cramers_v'])
+print(f"  Strongest demographic association: {strongest_demo[0]}, V={strongest_demo[1]['cramers_v']:.3f}")
+
+if strongest_demo[1]['cramers_v'] > 0.50:
+    print("  ⚠️  STRONG: Clusters may be trivially demographic.")
+    print("  Action: Review centroid profiles for pseudo-segmentation.")
+elif strongest_demo[1]['cramers_v'] > 0.30:
+    print("  ⚠️  MODERATE: Some demographic replication, but behavioral variation likely present.")
+    print("  Action: Compare to LPA results (Psychometrician will do this).")
+else:
+    print("  ✅ WEAK: Clusters capture behavioral variation beyond demographics.")
+    print("  Action: Proceed with confidence to next phase.")
+
+print("\nGamma Audit Finding:")
+if gamma_confound_flag:
+    print("  ⚠️  Gamma confound detected → Demographic associations may be gamma-driven.")
+    print("  Recommendation: Lower gamma or exclude problematic demographics before re-running.")
+else:
+    print("  ✅ No gamma confound → Demographic associations reflect true structure.")
+    print("  Confidence in current solution is appropriate.")
 ```
 
 ---
@@ -642,6 +776,13 @@ reflection = {
         str(k): {"size": int(np.sum(labels == k)),
                  "pct": round(np.sum(labels == k)/len(df_complete)*100, 1)}
         for k in range(optimal_k)
+    },
+    "bias_audit": {
+        "single_gamma": bias_audit_single,
+        "gamma_impact_audit": gamma_audit_summary,
+        "strongest_demographic": strongest_demo[0],
+        "strongest_cramers_v": float(strongest_demo[1]['cramers_v']),
+        "gamma_confound_detected": gamma_confound_flag
     }
 }
 
@@ -710,6 +851,8 @@ Present cluster assignments and centroid profiles directly to the user with inte
 
   Bias Audit:
     - Strongest demographic association: [variable], V=[value]
+    - Gamma confound detected: [yes/no]
+    - Interpretation: [STRONG/MODERATE/WEAK demographic replication]
 
   Artifacts Created:
     - cluster_kproto_baseline.csv
@@ -738,8 +881,9 @@ Present cluster assignments and centroid profiles directly to the user with inte
 8. All clusters ≥ 5% of sample (or user approved smaller clusters)
 9. Cluster stability assessed via bootstrap (mean ARI reported)
 10. Bias audit completed (Cramér's V for each demographic)
-11. All artifacts saved (assignments, centroids, plots, reflection log)
-12. Results routed to Psychometrician (pipeline) or user (standalone)
+11. **Gamma impact audit completed** (cross-gamma Cramér's V comparison; confound flagged if V increases monotonically)
+12. All artifacts saved (assignments, centroids, plots, reflection log)
+13. Results routed to Psychometrician (pipeline) or user (standalone)
 
 ### Convergence Failure Protocol
 

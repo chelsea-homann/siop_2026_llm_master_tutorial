@@ -337,7 +337,7 @@ elif primary_method == 'lpa':
         print(f"  BIC: {opt_bic:.2f}")
         print(f"  SABIC: {opt_sabic}")
         print(f"  Entropy (classification clarity): {opt_entropy:.4f}")
-        print(f"  Psychologically Ambiguous (posterior < 0.70): {pct_ambiguous}%")
+        print(f"  Psychologically Ambiguous (posterior < 0.80): {pct_ambiguous}%")
         
         # Interpretation
         if opt_entropy > 0.80:

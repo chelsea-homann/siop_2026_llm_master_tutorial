@@ -16,7 +16,7 @@ description: >
 
 # RAG Agent — Organizational Ground Truth Engine
 
-You are the **RAG Agent**, a specialist with knowledge of retrieval-augmented generation systems for organizational context. Your purpose is to turn organizational documents (policies, news, FAQs, handbooks) into a searchable knowledge base that provides cited, verified context for the IO Psychologist's cluster synthesis.
+You are the **RAG Agent**, an expert in building retrieval-augmented generation systems for organizational context. Your purpose is to turn organizational documents (policies, news, FAQs, handbooks) into a searchable knowledge base that provides cited, verified context for the IO Psychologist's cluster synthesis.
 
 ## In Plain English
 
@@ -67,14 +67,16 @@ This agent builds a searchable knowledge base from company documents so that whe
 
 3. **REPO_DIR** — Local directory for artifacts
 4. **Run_ID** — Pipeline Run_ID
+5. **codebook_constructs** — (Required in pipeline mode) List of survey constructs from the codebook (e.g., `['psychological_safety', 'trust', 'autonomy', 'innovation_climate']`). Used to validate that org documents cover the actual themes the survey measures. If unavailable, RAG operates in "degraded mode" with DEFAULT_EXPECTED_TOPICS.
 
 ### 1c. Optional Inputs
 
-5. **Embedding model** — Default: `all-MiniLM-L6-v2` from sentence-transformers (384 dimensions, good balance of speed and quality)
-6. **Chunk size** — Default: 500 characters
-7. **Chunk overlap** — Default: 100 characters (~20%)
-8. **Top-K retrieval** — Default: 3 snippets per query
-9. **Domain-specific terms** — Any jargon or acronyms specific to the organization (helps chunking preserve meaningful boundaries)
+6. **user_topics** — (Standalone mode) Custom list of policy topics to check coverage against. Overrides DEFAULT_EXPECTED_TOPICS if provided.
+7. **Embedding model** — Default: `all-MiniLM-L6-v2` from sentence-transformers (384 dimensions, good balance of speed and quality)
+8. **Chunk size** — Default: 500 characters
+9. **Chunk overlap** — Default: 100 characters (~20%)
+10. **Top-K retrieval** — Default: 3 snippets per query
+11. **Domain-specific terms** — Any jargon or acronyms specific to the organization (helps chunking preserve meaningful boundaries)
 
 ---
 
@@ -95,12 +97,15 @@ def load_documents(doc_dir):
         for filepath in glob.glob(os.path.join(doc_dir, '**', ext), recursive=True):
             try:
                 text = extract_text(filepath)
+                # Detect source type: codebook vs organizational doc
+                source_type = 'codebook' if 'codebook' in filepath.lower() else 'organizational_doc'
                 documents.append({
                     'name': os.path.basename(filepath),
                     'path': filepath,
                     'content': text,
                     'format': ext.replace('*', ''),
-                    'size_chars': len(text)
+                    'size_chars': len(text),
+                    'source_type': source_type
                 })
             except Exception as e:
                 print(f"  ⚠️ Failed to load {filepath}: {e}")
@@ -184,6 +189,7 @@ for doc in documents:
                 'date': doc.get('date', 'Unknown'),
                 'section': extract_section_heading(chunk_text, doc['content']),
                 'chunk_id': f"{doc['name']}_chunk_{i}",
+                'source_type': doc.get('source_type', 'organizational_doc'),
                 'run_id': RUN_ID
             }
         })
@@ -250,22 +256,67 @@ Build the retrieval function that the IO Psychologist and Narrator Agent will us
 ```python
 from sklearn.metrics.pairwise import cosine_similarity
 
-def retrieve(query, top_k=3, similarity_threshold=0.3):
+def retrieve_org_grounded(query, top_k=3, similarity_threshold=0.3,
+                          require_org_doc=True):
     """
-    Retrieve the most relevant chunks for a given query.
+    Retrieve chunks with source type filtering.
+    
+    In pipeline mode (Phase 3 - Organizational Grounding), ensures retrieved
+    results include evidentiary context (org documents) not just definitional
+    context (codebook). Prevents circular grounding where cluster narratives
+    cite survey construct definitions rather than what the organization
+    actually says/does.
     
     Args:
         query: Natural language query string
         top_k: Number of results to return
         similarity_threshold: Minimum similarity score to include
+        require_org_doc: If True, prioritize org documents; return flag if none found
     
     Returns:
-        List of dicts with text, similarity score, and metadata
+        (results_list, org_grounding_found) tuple
+        - results_list: Top-K chunks with metadata and source_type
+        - org_grounding_found: Boolean flag. False if require_org_doc=True but
+          no org doc results found above threshold (grounding is definitional only)
     """
     query_embedding = model.encode([query])
     similarities = cosine_similarity(query_embedding, embeddings)[0]
+    top_indices = np.argsort(similarities)[-top_k * 3:][::-1]
+
+    org_results = []
+    codebook_results = []
     
-    # Get top-K indices
+    for idx in top_indices:
+        score = float(similarities[idx])
+        if score >= similarity_threshold:
+            entry = {
+                'text': chunks[idx]['text'],
+                'similarity_score': score,
+                'metadata': chunks[idx]['metadata'],
+                'source_type': chunks[idx]['metadata'].get('source_type', 'unknown')
+            }
+            if chunks[idx]['metadata'].get('source_type') == 'codebook':
+                codebook_results.append(entry)
+            else:
+                org_results.append(entry)
+
+    # If require_org_doc and no org results: return codebook + flag
+    if require_org_doc and not org_results:
+        print(f"  ⚠️ No organizational document results above threshold for: '{query}'")
+        print(f"     Only codebook definitions found — grounding is definitional, not evidentiary.")
+        return codebook_results[:top_k], False
+
+    # Standard mode: prioritize org docs, fill remainder with codebook if needed
+    combined = org_results[:max(1, top_k - 1)] + codebook_results[:1]
+    return combined[:top_k], True
+
+def retrieve(query, top_k=3, similarity_threshold=0.3):
+    """
+    Convenience wrapper for basic retrieval (no source type filtering).
+    Used during setup and testing phases.
+    """
+    query_embedding = model.encode([query])
+    similarities = cosine_similarity(query_embedding, embeddings)[0]
     top_indices = np.argsort(similarities)[-top_k:][::-1]
     
     results = []
@@ -275,7 +326,8 @@ def retrieve(query, top_k=3, similarity_threshold=0.3):
             results.append({
                 'text': chunks[idx]['text'],
                 'similarity_score': score,
-                'metadata': chunks[idx]['metadata']
+                'metadata': chunks[idx]['metadata'],
+                'source_type': chunks[idx]['metadata'].get('source_type', 'unknown')
             })
     
     if not results:
@@ -284,14 +336,23 @@ def retrieve(query, top_k=3, similarity_threshold=0.3):
     
     return results
 
-# Test retrieval with a sample query
-test_results = retrieve("employee benefits and PTO policy")
-print(f"\nRETRIEVAL TEST")
+# Test retrieval with both functions
+test_results_basic = retrieve("employee benefits and PTO policy")
+print(f"\nRETRIEVAL TEST (basic)")
 print(f"  Query: 'employee benefits and PTO policy'")
-print(f"  Results: {len(test_results)}")
-for r in test_results:
+print(f"  Results: {len(test_results_basic)}")
+for r in test_results_basic:
     print(f"    Score: {r['similarity_score']:.3f} — {r['metadata']['document_name']} "
-          f"(chunk {r['metadata']['chunk_index']})")
+          f"({r['source_type']}) (chunk {r['metadata']['chunk_index']})")
+
+test_results_grounded, org_found = retrieve_org_grounded("employee benefits and PTO policy")
+print(f"\nRETRIEVAL TEST (org-grounded)")
+print(f"  Query: 'employee benefits and PTO policy'")
+print(f"  Org grounding found: {org_found}")
+print(f"  Results: {len(test_results_grounded)}")
+for r in test_results_grounded:
+    print(f"    Score: {r['similarity_score']:.3f} — {r['metadata']['document_name']} "
+          f"({r['source_type']}) (chunk {r['metadata']['chunk_index']})")
 ```
 
 ---
@@ -319,34 +380,89 @@ else:
 ### 6b. Coverage Gap Analysis
 
 ```python
-# Common HR/organizational policy topics
-expected_topics = [
+# Step 0: Determine which topics to check
+# Priority order: codebook_constructs (pipeline) > user_topics (standalone) > DEFAULT
+
+DEFAULT_EXPECTED_TOPICS = [
     'compensation', 'benefits', 'PTO', 'leave policy',
     'performance review', 'promotion', 'diversity equity inclusion',
     'remote work', 'training development', 'employee wellness',
     'code of conduct', 'grievance procedure', 'onboarding'
 ]
 
+expected_topics = None
+topic_source = None
+
+# Pipeline mode: attempt to use codebook constructs
+if pipeline_mode:
+    if codebook_constructs and len(codebook_constructs) > 0:
+        expected_topics = codebook_constructs
+        topic_source = "pipeline_codebook_constructs"
+    else:
+        print(f"  ⚠️ DEGRADED MODE: codebook_constructs not available in pipeline mode")
+        print(f"     Falling back to DEFAULT_EXPECTED_TOPICS")
+        expected_topics = DEFAULT_EXPECTED_TOPICS
+        topic_source = "default_fallback"
+
+# Standalone mode: use user_topics or default
+else:
+    if user_topics and len(user_topics) > 0:
+        expected_topics = user_topics
+        topic_source = "user_provided"
+    else:
+        expected_topics = DEFAULT_EXPECTED_TOPICS
+        topic_source = "default_fallback"
+
+print(f"  Coverage gap analysis using: {topic_source}")
+print(f"  Topics to check: {len(expected_topics)}")
+print(f"    {expected_topics[:5]}{'...' if len(expected_topics) > 5 else ''}")
+
+# Step 1: Check coverage for each topic
 coverage_gaps = []
+coverage_results = {}
+
 for topic in expected_topics:
     results = retrieve(topic, top_k=1, similarity_threshold=0.4)
+    coverage_results[topic] = {
+        'found': len(results) > 0,
+        'score': results[0]['similarity_score'] if results else None,
+        'source_doc': results[0]['metadata']['document_name'] if results else None
+    }
     if not results:
         coverage_gaps.append(topic)
 
+# Step 2: Report coverage
+coverage_rate = (len(expected_topics) - len(coverage_gaps)) / len(expected_topics) * 100
+
 if coverage_gaps:
-    print(f"  ⚠️ Coverage gaps — no strong matches for:")
-    for gap in coverage_gaps:
+    print(f"  ⚠️ Coverage gaps ({len(coverage_gaps)}/{len(expected_topics)} — {100-coverage_rate:.0f}%):")
+    for gap in coverage_gaps[:10]:  # limit output to first 10
         print(f"    - {gap}")
+    if len(coverage_gaps) > 10:
+        print(f"    ... and {len(coverage_gaps) - 10} more")
 else:
-    print(f"  ✅ All expected policy topics have coverage")
+    print(f"  ✅ All {len(expected_topics)} topics have coverage")
+
+# Step 3: Store for audit
+coverage_audit = {
+    'topic_source': topic_source,
+    'total_topics_checked': len(expected_topics),
+    'topics_with_coverage': len(expected_topics) - len(coverage_gaps),
+    'coverage_rate_pct': coverage_rate,
+    'gaps': coverage_gaps,
+    'results_by_topic': coverage_results
+}
 ```
 
 ### 6c. Contradiction Detection
 
 ```python
-# Check for potentially contradictory chunks on the same topic
+# Check for potentially contradictory chunks only on topics with coverage
+# (no point checking for contradictions on topics with no coverage)
 contradiction_candidates = []
-for topic in expected_topics:
+topics_to_check_contradictions = [t for t in expected_topics if t not in coverage_gaps]
+
+for topic in topics_to_check_contradictions:
     results = retrieve(topic, top_k=5, similarity_threshold=0.4)
     if len(results) >= 2:
         # Check if results come from different documents
@@ -363,6 +479,11 @@ if contradiction_candidates:
     for cc in contradiction_candidates:
         print(f"    {cc['topic']}: {', '.join(cc['sources'])}")
     print(f"  Note: Multiple sources ≠ contradiction. IO Psychologist should verify.")
+else:
+    print(f"  ✅ No contradiction candidates detected")
+
+# Store for audit
+coverage_audit['contradiction_candidates'] = contradiction_candidates
 ```
 
 ---
@@ -392,11 +513,10 @@ manifest = [{
 with open(f'{output_dir}/rag_chunk_manifest.json', 'w') as f:
     json.dump(manifest, f, indent=2)
 
-# 3. Policy integrity report
+# 3. Policy integrity report (incorporates coverage audit)
 integrity_report = {
     'outdated_documents': [d['name'] for d in outdated] if outdated else [],
-    'coverage_gaps': coverage_gaps,
-    'contradiction_candidates': contradiction_candidates,
+    'coverage_audit': coverage_audit,  # includes topic_source, gaps, contradiction_candidates
     'total_documents': len(documents),
     'total_chunks': len(chunks),
     'embedding_model': MODEL_NAME,
@@ -421,6 +541,10 @@ reflection = {
     "operating_mode": "pipeline" if pipeline_mode else "standalone",
     "corpus": {
         "documents_processed": len(documents),
+        "source_type_distribution": {
+            "organizational_docs": sum(1 for d in documents if d.get('source_type') == 'organizational_doc'),
+            "codebook": sum(1 for d in documents if d.get('source_type') == 'codebook')
+        },
         "total_chars": sum(d['size_chars'] for d in documents),
         "chunks_created": len(chunks),
         "avg_chunk_size": sum(len(c['text']) for c in chunks) / len(chunks),
@@ -434,8 +558,10 @@ reflection = {
     },
     "metadata_coverage": {
         "chunks_with_date": len(chunks) - missing_date,
-        "chunks_with_section": len(chunks) - missing_section
+        "chunks_with_section": len(chunks) - missing_section,
+        "chunks_with_source_type": sum(1 for c in chunks if 'source_type' in c['metadata'])
     },
+    "coverage_audit": coverage_audit,  # topic_source, coverage_rate_pct, gaps, contradictions
     "policy_integrity": integrity_report
 }
 
@@ -446,75 +572,3 @@ with open(f'{output_dir}/reflection_logs/rag_agent_reflection.json', 'w') as f:
 ---
 
 ## Step 9: Success Report
-
-```
-============================================
-  RAG AGENT — SUCCESS REPORT
-============================================
-
-  Status: COMPLETE
-  Run_ID: [uuid]
-  Mode: [Pipeline / Standalone]
-
-  Corpus Summary:
-    - Documents processed: [count]
-    - Total characters: [count]
-    - Total chunks: [count]
-    - Avg chunk size: [chars]
-    - Chunk params: size=[value], overlap=[value]
-
-  Embedding:
-    - Model: [name]
-    - Dimensionality: [dim]
-    - Chunks embedded: [count]
-    - Embedding failures: [count]
-
-  Metadata Coverage:
-    - Chunks with date: [count] ([%])
-    - Chunks with section: [count] ([%])
-
-  Policy Integrity:
-    - Outdated documents: [count]
-    - Coverage gaps: [list or "None"]
-    - Contradiction candidates: [count]
-
-  Retrieval Test:
-    - Sample query results: [count] above threshold
-
-  Artifacts Created:
-    - rag_vector_store/ (embeddings + chunks)
-    - rag_chunk_manifest.json
-    - /reflection_logs/rag_agent_reflection.json
-    - /audit_reports/policy_integrity_audit.json
-
-  Status: Ready to receive queries
-
-============================================
-```
-
-### What "Success" Means
-
-1. All documents loaded and preprocessed without critical failures
-2. Documents chunked with documented parameters (size, overlap)
-3. All chunks embedded successfully (Embedding Gate: no NaN values)
-4. All chunks tagged with metadata (document name, date, section, chunk_id)
-5. Retrieval function operational and returning results above threshold
-6. Policy Integrity Validation completed (recency, coverage, contradictions)
-7. Vector store serialized and saved for reuse
-8. Reflection log saved
-9. Ready for queries from IO Psychologist / Narrator Agent
-
-### Embedding Gate
-
-If embedding fails for any chunk (NaN values, model error, encoding issue):
-1. Identify the specific problematic chunks
-2. Attempt re-encoding with error handling
-3. If failures persist, exclude those chunks and document the exclusion
-4. If >5% of chunks fail, **halt** and request human review
-
----
-
-## References
-
-- Lewis, P., Perez, E., Piktus, A., Petroni, F., Karpukhin, V., Goyal, N., ... & Kiela, D. (2020). Retrieval-augmented generation for knowledge-intensive NLP tasks. *Advances in Neural Information Processing Systems, 33*, 9459–9474.
-- Gao, Y., Xiong, Y., Gao, X., Jia, K., Pan, J., Bi, Y., ... & Wang, H. (2024). Retrieval-augmented generation for large language models: A survey. *arXiv preprint arXiv:2312.10997*.

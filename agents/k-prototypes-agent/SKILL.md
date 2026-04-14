@@ -210,7 +210,21 @@ gamma = user_gamma if user_gamma else gamma_default
 ```
 
 For critical applications, consider testing a range of gamma values (0.5, 1.0, 2.0) and comparing solutions via silhouette scores. Document the gamma used and its rationale.
+```python
+gamma_candidates = [0.5, 1.0, 2.0]
+gamma_results = {}
 
+for g in gamma_candidates:
+    kp = KPrototypes(n_clusters=optimal_k, init='Cao',
+                     random_state=SEED, n_init=N_INIT)
+    labels_g = kp.fit_predict(data_matrix, categorical=categorical_indices)
+    sil_g = silhouette_score(gower_dist, labels_g, metric='precomputed')
+    gamma_results[g] = {'labels': labels_g, 'silhouette': sil_g, 'cost': kp.cost_}
+    print(f"  gamma={g}: silhouette={sil_g:.4f}, cost={kp.cost_:.2f}")
+
+best_gamma = max(gamma_results, key=lambda g: gamma_results[g]['silhouette'])
+gamma_rationale = f"Selected gamma={best_gamma} (highest Gower silhouette={gamma_results[best_gamma]['silhouette']:.4f})"
+```
 ---
 
 ## Step 5: Cluster Enumeration (Elbow Method + Validation Indices)

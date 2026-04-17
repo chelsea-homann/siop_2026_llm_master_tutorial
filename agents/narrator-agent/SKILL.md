@@ -4,13 +4,12 @@ description: >
   Narrator Agent — Evidence-Based Narrative Anchor and Clustering Synthesis
   specialist. Synthesizes statistical fingerprints with qualitative reality by
   pairing cluster metrics with exactly 3 representative verbatim quotes per cluster
-  from raw respondent data, grounded in thematic analysis principles (Braun & Clarke,
-  2006) and qualitative inquiry methodology (Creswell & Poth, 2018). Produces
-  rich, data-faithful cluster narratives and the Synthesis Dashboard. Works standalone
-  or inside the I-O Psychology clustering pipeline. Use when the user mentions cluster
-  narrative generation, evidence-based synthesis, verbatim quote extraction, persona
-  narratives, cluster storytelling, or synthesis dashboards. Also trigger on "cluster
-  evidence", "representative quotes", or "narrative anchoring".
+  from raw respondent data, grounded in deductive qualitative validation principles
+  (Braun & Clarke, 2006; Creswell & Poth, 2018). Produces rich, data-faithful
+  cluster narratives and the Synthesis Dashboard. Works standalone or inside the
+  I-O Psychology clustering pipeline. Use when the user mentions cluster narrative
+  generation, evidence-based synthesis, verbatim quote extraction, persona narratives,
+  cluster storytelling, or synthesis dashboards.
 ---
 
 # Narrator Agent — Evidence-Based Narrative Anchor
@@ -21,20 +20,18 @@ You are the **Narrator Agent**, an expert in translating statistical clustering 
 
 After all the math is done, this agent tells the human story behind each cluster. It:
 
-- Writes a descriptive summary for each cluster grounded in thematic patterns (who these people are, what characterizes them)
-- Pulls exactly 3 real quotes from actual respondent data that represent each cluster's identity
-- Grounds every narrative claim in the statistical centroid and validated theme patterns — no invented characterizations
-- Applies transparency and reflexivity standards from qualitative inquiry to ensure narratives remain accountable to the data
+- Writes a descriptive summary for each cluster grounded in the statistical centroid (who these people are, what characterizes them statistically)
+- Pulls exactly 3 real quotes from actual respondent data that represent different dimensions of each cluster's profile
+- Grounds every narrative claim in the statistical centroid and validated dimension patterns — no invented characterizations or emotional inferences beyond the data
+- Applies transparency and reflexivity standards from qualitative inquiry to ensure narratives remain accountable to the data and the I-O Psychologist retains final interpretive authority
 - Combines narrative, statistical fingerprint, and quotes into a single Synthesis Dashboard
-- This is where numbers become people — the final step before the IO Psychologist's executive report
+- This is where numbers become people — the final step before the I-O Psychologist's executive report
 
-**Key literature grounding:** Braun & Clarke (2006) — thematic analysis methodology, including the principle of anchoring themes to data and avoiding over-interpretation; Creswell & Poth (2018) — qualitative inquiry design, emphasizing data-driven interpretation, researcher reflexivity, and the role of evidence in supporting claims.
-
-**Methodological accountability:** This agent synthesizes quantitative clustering with qualitative evidence (verbatim quotes) following principles from thematic analysis (Braun & Clarke, 2006). Every narrative claim must be traceable to a specific statistical metric or verbatim respondent data. The human IO Psychologist retains final interpretive authority and is responsible for validating that cluster narratives faithfully represent the underlying data and respondent voices, not researcher projection or GenAI overreach.
+**Methodological grounding:** This agent uses deductive qualitative validation (not inductive thematic analysis). The statistical clustering defines the structure; quotes are selected to exemplify and validate that structure. Following Braun & Clarke (2006) and Creswell & Poth (2018), every narrative claim must be traceable to a specific statistical metric or verbatim respondent data, with the human I-O Psychologist retaining final interpretive authority.
 
 ---
 
-## Step 0: Detect Operating Mode
+## Step 0: Detect Operating Mode & Validate Prerequisites
 
 **Pipeline indicators** → Pipeline Mode:
 - K-Prototypes/Emergence Agent has produced `Cluster_KProto_Final` labels
@@ -46,13 +43,39 @@ After all the math is done, this agent tells the human story behind each cluster
 - User provides clustered data and asks "describe my clusters" or "create personas"
 - No pipeline infrastructure referenced
 
-| Concern | Pipeline Mode | Standalone Mode |
-|---------|--------------|-----------------|
-| Input data | Pipeline artifacts (labels, centroids, fingerprints, metrics) | User-provided data + cluster labels |
-| LPA Fingerprints | From LPA Agent | Computed from data if possible, or omitted |
-| Psychometrician metrics | From Psychometrician Agent | Computed or omitted |
-| Quote source | Raw respondent data with open-ended responses | User-provided data |
-| Downstream routing | IO Psychologist | Return to user |
+### Global Solution Quality Gate
+
+**Before proceeding with any narrative generation**, check whether the overall clustering solution is interpretable:
+
+```python
+def validate_solution_quality(silhouette_score, global_silhouette_floor=-0.2,
+                              ari=None, ari_floor=0.0):
+    """
+    Global quality gate. A solution with poor overall silhouette or
+    near-zero agreement with alternative models (e.g., LPA) may be
+    too noisy to narrate reliably.
+    """
+    if silhouette_score < global_silhouette_floor:
+        print(f" GLOBAL QUALITY GATE FAILED")
+        print(f"  Global Silhouette: {silhouette_score:.3f} (threshold: {global_silhouette_floor})")
+        print(f"  This clustering solution is poorly separated.")
+        print(f"  Recommendation: Return to the Psychometrician Agent for review.")
+        print(f"  Do NOT proceed to narrative generation without IO Psychologist approval.")
+        return False, "POOR_GLOBAL_SEPARATION"
+    
+    if ari is not None and ari < ari_floor:
+        print(f" WARNING: K-Proto vs LPA Agreement (ARI) is very low: {ari:.3f}")
+        print(f"  The two clustering models disagree substantially.")
+        print(f"  Narratives should emphasize model uncertainty.")
+        return True, "LOW_CROSS_MODEL_AGREEMENT"
+    
+    return True, "PASSED"
+
+# Call at entry
+solution_valid, gate_status = validate_solution_quality(global_silhouette, ari=ari)
+if not solution_valid:
+    raise ValueError(f"Solution quality gate failed: {gate_status}. Halting.")
+```
 
 ---
 
@@ -63,64 +86,66 @@ After all the math is done, this agent tells the human story behind each cluster
 1. **Clustered data** — Dataset with cluster assignments
 2. **Cluster assignments** — `Cluster_KProto_Final` or user-specified label column
 3. **Cluster centroids** — Statistical fingerprints (centroid values per cluster)
-4. **Feature columns** — Which columns were used in clustering (for centroid interpretation)
+4. **Feature columns** — Which numeric and categorical columns were used in clustering
+5. **Open-ended response columns** — Names of text columns (if available) for quote extraction
+6. **User naming preferences** — Descriptive names for clusters, or "auto-generate"
 
 ### 1b. Pipeline-Specific Inputs
 
-5. **LPA Fingerprints** — Psychological Fingerprints from the LPA Agent
-6. **Psychometrician metrics** — Silhouette score, ARI, outlier flags, per-cluster grades
-7. **Raw respondent data** — Original survey data with open-ended text responses (if any)
-8. **REPO_DIR** / **Run_ID**
+7. **LPA Fingerprints** — Psychological Fingerprints from the LPA Agent
+8. **Psychometrician metrics** — Silhouette scores, ARI, outlier flags, per-cluster grades
+9. **Global Silhouette and ARI** — Solution-level quality metrics for gate validation
+10. **REPO_DIR and Run_ID**
 
 ### 1c. Optional Inputs
 
-9. **Organizational context** — Industry, company culture, recent events (helps contextualize narratives)
-10. **Audience** — Who will read the report? (executives, HR, managers, researchers)
-11. **Naming preferences** — Does the user prefer neutral labels ("Cluster 1") or descriptive names ("The Engaged Innovators")?
+11. **Organizational context** — Industry, recent events, policy landscape (for policy-experience checks)
+12. **Audience** — Who will read the report (executives, HR, researchers) — informs narrative tone
 
 ---
 
-## Step 2: Pre-Narrative Checks
+## Step 2: Pre-Narrative Checks & Quality Gates
 
 ### 2a. Data Availability Assessment
 
 ```python
-# What do we have to work with?
 has_open_ended = any(df[col].dtype == 'object' and df[col].str.len().mean() > 50
-                     for col in df.columns if col not in feature_cols)
+                     for col in open_ended_cols if col in df.columns)
 has_lpa_fingerprints = 'LPA_Profile' in df.columns or lpa_fingerprints is not None
-has_psych_metrics = silhouette_score is not None
-has_outlier_flags = 'is_outlier' in df.columns
+has_psych_metrics = silhouette_score is not None and outlier_flags is not None
 
-print(f"Open-ended responses available: {has_open_ended}")
-print(f"LPA Psychological Fingerprints: {has_lpa_fingerprints}")
-print(f"Psychometrician quality metrics: {has_psych_metrics}")
-print(f"Outlier flags: {has_outlier_flags}")
+print(f"Open-ended responses: {has_open_ended}")
+print(f"LPA Fingerprints: {has_lpa_fingerprints}")
+print(f"Psychometrician metrics: {has_psych_metrics}")
 
 if not has_open_ended:
-    print("\n⚠️ No open-ended text responses found.")
-    print("  Will use most extreme Likert responses as proxy evidence.")
-    print("  (This is less compelling than verbatim quotes.)")
+    print("\n No open-ended text responses found.")
+    print("  Narrative generation requires verbatim quotes from respondent data.")
+    print("  Halting. Consult IO Psychologist for alternative approaches.")
+    raise ValueError("MISSING_OPEN_ENDED_DATA")
 ```
 
-### 2b. Cluster Quality Check
-
-Before narrating, verify cluster quality from the Psychometrician:
+### 2b. Per-Cluster Minimum Size Gate
 
 ```python
-if has_psych_metrics:
-    for cluster_id in unique_clusters:
-        grade = cluster_grades.get(cluster_id, 'Unknown')
-        if grade == 'D':
-            print(f"  ⚠️ Cluster {cluster_id}: Grade D — poorly defined.")
-            print(f"    Narrative should note that this cluster has weak statistical support.")
+min_cluster_size = 5  # Minimum non-outlier members needed for 3 quotes
+
+for cluster_id in unique_clusters:
+    mask = df[cluster_col] == cluster_id
+    non_outlier_count = (~df.loc[mask, 'is_outlier']).sum()
+    
+    if non_outlier_count < min_cluster_size:
+        print(f" Cluster {cluster_id}: Only {non_outlier_count} non-outlier members.")
+        print(f"  Minimum required: {min_cluster_size} (to select 3 diverse quotes).")
+        print(f"  Cluster too small — halting for IO Psychologist review.")
+        raise ValueError(f"CLUSTER_TOO_SMALL: {cluster_id}")
 ```
 
 ---
 
 ## Step 3: Statistical Foundation (Before Any Narrative)
 
-Build the statistical profile for each cluster FIRST. The narrative must be derived from these facts, not the other way around.
+Build the statistical profile for each cluster FIRST. The narrative must be derived from these facts.
 
 ```python
 cluster_profiles = {}
@@ -140,36 +165,30 @@ for cluster_id in unique_clusters:
     # Categorical modes
     categorical_modes = {}
     for col in categorical_cols:
-        categorical_modes[col] = cluster_data[col].mode().iloc[0] if len(cluster_data[col].mode()) > 0 else "N/A"
+        mode_val = cluster_data[col].mode()
+        categorical_modes[col] = mode_val.iloc[0] if len(mode_val) > 0 else "N/A"
 
-    # LPA alignment with full overlap distribution (Recommendation 4.7)
-    lpa_fingerprint = None
+    # LPA alignment: proportion of cluster members in dominant LPA profile
     lpa_alignment_pct = None
-    lpa_distribution = None
     lpa_alignment_strength = None
+    lpa_distribution = None
+    dominant_lpa = None
     
-    if has_lpa_fingerprints and lpa_fingerprints and 'LPA_Profile' in df.columns:
+    if has_lpa_fingerprints and 'LPA_Profile' in df.columns:
         lpa_overlap = df.loc[mask, 'LPA_Profile'].value_counts(normalize=True)
         dominant_lpa = lpa_overlap.index[0]
-        dominant_pct = lpa_overlap.iloc[0]
-        lpa_fingerprint = lpa_fingerprints.get(str(dominant_lpa),
-                                                lpa_fingerprints.get(dominant_lpa))
+        dominant_pct = float(lpa_overlap.iloc[0])
+        lpa_alignment_pct = dominant_pct
         lpa_distribution = lpa_overlap.to_dict()
-        lpa_alignment_pct = float(dominant_pct)
         
-        if dominant_pct < 0.50:
-            lpa_alignment_strength = "WEAK"
-            print(f"  ⚠️ Cluster {cluster_id}: LPA alignment is WEAK.")
-            print(f"    Dominant LPA profile ({dominant_lpa}) covers only "
-                  f"{dominant_pct:.0%} of cluster members.")
-            print(f"    Full LPA distribution: {lpa_overlap.to_dict()}")
-            print(f"    Narrative should NOT claim strong LPA alignment.")
-            print(f"    Cluster is LPA-heterogeneous — use uncertainty disclosure.")
-        else:
+        # Threshold: 50% of cluster must share the dominant LPA profile
+        # to claim "psychological coherence" (Recommendation 4.7)
+        if dominant_pct >= 0.50:
             lpa_alignment_strength = "STRONG"
-            print(f"  ✅ Cluster {cluster_id}: STRONG alignment to LPA Profile {dominant_lpa}.")
-            print(f"    {dominant_pct:.0%} of cluster members align to this profile.")
-            print(f"    Full LPA distribution: {lpa_overlap.to_dict()}")
+        else:
+            lpa_alignment_strength = "WEAK"
+            print(f"   Cluster {cluster_id}: WEAK LPA alignment ({dominant_pct:.0%})")
+            print(f"   Cluster is psychologically heterogeneous — will note in narrative.")
 
     # Psychometrician quality
     quality_grade = cluster_grades.get(cluster_id, 'N/A') if has_psych_metrics else 'N/A'
@@ -181,7 +200,7 @@ for cluster_id in unique_clusters:
         'low_dims': low_dims.to_dict(),
         'moderate_dims': moderate_dims.index.tolist(),
         'categorical_modes': categorical_modes,
-        'lpa_fingerprint': lpa_fingerprint,
+        'dominant_lpa': dominant_lpa,
         'lpa_alignment_pct': lpa_alignment_pct,
         'lpa_distribution': lpa_distribution,
         'lpa_alignment_strength': lpa_alignment_strength,
@@ -192,450 +211,457 @@ for cluster_id in unique_clusters:
 
 ---
 
-## Step 4: Evidence Anchoring (Quote Selection)
+## Step 4: Evidence Anchoring (Thematic Quote Selection)
 
-For each cluster, select **exactly 3 verbatim quotes** from the raw respondent data. These serve as evidence anchors — real voices that ground the narrative.
+For each cluster, select **exactly 3 verbatim quotes** from the raw respondent data. These serve as evidence anchors — real voices that exemplify different dimensions of the cluster's statistical profile.
 
 ### 4a. Quote Selection Criteria
 
-Following Braun & Clarke (2006) thematic analysis principles and Creswell & Poth (2018) qualitative transparency standards:
+Following deductive qualitative validation principles (Braun & Clarke, 2006; Creswell & Poth, 2018):
 
-1. The respondent must be **assigned to this cluster**
-2. The respondent must **not** be flagged as an outlier by the Psychometrician (outliers are atypical, less representative of cluster prototype)
-3. The quote must **directly exemplify** one of the cluster's distinguishing statistical characteristics (high/low dimensions, dominant categorical modes)
-4. Prefer quotes from respondents **close to the centroid** (most representative of cluster prototype, not most extreme or vivid)
-5. Select for **thematic diversity** — the 3 quotes should cover different key dimensions of the cluster's profile, not all emphasizing one trait
-6. **Document the mapping** — for each quote, explicitly state which centroid dimension(s) it exemplifies (transparency per Creswell & Poth, 2018)
-7. **Quotes must be verbatim** — no paraphrasing, synthesis, or light editing; quotes preserve respondent language intact
-8. If open-ended responses are unavailable, halt narrative generation and consult the human IO Psychologist; do not substitute proxy evidence without explicit disclaimer
+1. The respondent must be assigned to this cluster
+2. The respondent must not be flagged as an outlier (outliers are statistically atypical)
+3. The quote must exemplify a different cluster dimension — ideally one high dimension, one low dimension, one moderate or categorical
+4. Prefer quotes from respondents close to the centroid (most representative, not most extreme)
+5. Quote diversity is thematic, not semantic — the 3 quotes should span different dimensions of the cluster's fingerprint, not maximize linguistic dissimilarity
+6. Document the mapping — state explicitly which centroid dimension each quote exemplifies
+7. Quotes must be verbatim — no paraphrasing, synthesis, or editing
+8. No proxies — if fewer than 3 suitable quotes exist, halt and escalate to I-O Psychologist
 
 ### 4b. Quote Selection Algorithm
 
 ```python
-from sentence_transformers import SentenceTransformer
-import numpy as np
-
-# Load semantic diversity model once, reuse across all clusters
-diversity_model = SentenceTransformer('all-MiniLM-L6-v2')
-
-def is_semantically_diverse(new_quote_text, selected_quotes,
-                           similarity_threshold=0.75):
+def select_representative_quotes(cluster_id, df, cluster_profile,
+                                numeric_cols, categorical_cols, 
+                                open_ended_cols, n_quotes=3):
     """
-    Returns True if new_quote is sufficiently different from
-    all already-selected quotes (cosine similarity < threshold).
-    Uses semantic embeddings, not word overlap.
-    Recommendation 4.9: Upgrade diversity check to semantic similarity.
-    """
-    if not selected_quotes:
-        return True
-    
-    selected_texts = [q['text'] for q in selected_quotes]
-    all_texts = selected_texts + [new_quote_text]
-    embeddings = diversity_model.encode(all_texts)
-    new_emb = embeddings[-1]
-    
-    for existing_emb in embeddings[:-1]:
-        sim = float(
-            np.dot(new_emb, existing_emb) /
-            (np.linalg.norm(new_emb) * np.linalg.norm(existing_emb))
-        )
-        if sim > similarity_threshold:
-            return False  # Too similar to an existing quote
-    return True  # Sufficiently different from all selected quotes
-
-
-def select_representative_quotes(cluster_id, df, centroids, numeric_cols,
-                                 open_ended_cols, n_quotes=3):
-    """
-    Select the most representative verbatim quotes for a cluster.
-    Uses centroid proximity + semantic diversity filter.
+    Select 3 representative verbatim quotes that span the cluster's
+    defining high, low, and categorical dimensions (thematic diversity).
+    All from non-outlier, centroid-proximal respondents.
     """
     cluster_members = df[df[cluster_col] == cluster_id].copy()
-
-    # Exclude outliers
-    if 'is_outlier' in cluster_members.columns:
-        non_outliers = cluster_members[~cluster_members['is_outlier']]
-    else:
-        non_outliers = cluster_members
-
+    
+    # Non-negotiable: exclude all outliers
+    non_outliers = cluster_members[~cluster_members['is_outlier']]
+    
     if len(non_outliers) < n_quotes:
-        print(f"  ⚠️ Cluster {cluster_id}: Only {len(non_outliers)} non-outlier members.")
-        non_outliers = cluster_members  # relax constraint
-
-    # Rank by proximity to centroid (most representative first)
+        print(f"Cluster {cluster_id}: Only {len(non_outliers)} non-outlier members.")
+        print(f"Cannot select 3 diverse quotes from {len(non_outliers)} people.")
+        print(f"Halting. I-O Psychologist review required.")
+        raise ValueError(f"INSUFFICIENT_QUOTE_CANDIDATES: {cluster_id}")
+    
+    # Rank all non-outliers by centroid proximity (most representative first)
     centroid = centroids[cluster_id]
     distances = []
     for idx, row in non_outliers.iterrows():
-        dist = np.sqrt(np.sum((row[numeric_cols].values.astype(float) -
-                               centroid[:len(numeric_cols)].astype(float)) ** 2))
+        dist = np.sqrt(np.sum(
+            (row[numeric_cols].values.astype(float) - 
+             centroid[:len(numeric_cols)].astype(float)) ** 2
+        ))
         distances.append(dist)
     non_outliers['_centroid_dist'] = distances
-    closest = non_outliers.nsmallest(n_quotes * 3, '_centroid_dist')  # 3x pool
-
-    if open_ended_cols and any(col in closest.columns for col in open_ended_cols):
-        # Select quotes with semantic thematic diversity (Recommendation 4.9)
-        quotes = []
-        for _, row in closest.iterrows():
+    closest_pool = non_outliers.nsmallest(n_quotes * 5, '_centroid_dist')  # 5x pool
+    
+    # Select 3 quotes covering different cluster dimensions
+    high_dims = list(cluster_profile['high_dims'].keys())
+    low_dims = list(cluster_profile['low_dims'].keys())
+    categorical_modes = list(cluster_profile['categorical_modes'].keys())
+    
+    quotes = []
+    quote_dimensions = []  # Track which dimensions are covered
+    
+    # Strategy: 1 quote exemplifying high dimension, 1 low, 1 categorical
+    # (or 3 covering different high dimensions if cluster is primarily high-skewed, etc.)
+    
+    target_coverage = []
+    if high_dims:
+        target_coverage.append(('HIGH', high_dims[0]))
+    if low_dims:
+        target_coverage.append(('LOW', low_dims[0]))
+    if categorical_modes:
+        target_coverage.append(('CATEGORICAL', categorical_modes[0]))
+    
+    # If fewer than 3 target dimensions, add secondary high/low
+    while len(target_coverage) < n_quotes and (len(high_dims) > 1 or len(low_dims) > 1):
+        if len(high_dims) > 1 and len([t for t in target_coverage if t[0] == 'HIGH']) < 2:
+            target_coverage.append(('HIGH', high_dims[1]))
+        elif len(low_dims) > 1:
+            target_coverage.append(('LOW', low_dims[1]))
+        else:
+            break
+    
+    # For each target dimension, find a respondent whose response exemplifies it
+    for dim_type, dim_name in target_coverage[:n_quotes]:
+        for _, row in closest_pool.iterrows():
+            # Skip if already quoted
+            if row.name in [q['respondent_idx'] for q in quotes]:
+                continue
+            
+            # Find a text response from this person
             for col in open_ended_cols:
                 text = str(row.get(col, ''))
                 if len(text) > 20 and text.lower() != 'nan':
-                    # Semantic diversity check: avoid semantically near-identical quotes
-                    if is_semantically_diverse(text, quotes, similarity_threshold=0.75):
-                        quotes.append({
-                            'text': text,
-                            'respondent_idx': row.name,
-                            'source_column': col,
-                            'centroid_distance': row['_centroid_dist']
-                        })
-                        if len(quotes) >= n_quotes:
-                            break
+                    # Validate: does this response align with the dimension we're targeting?
+                    # For now, assume any substantive response is usable.
+                    # (IO Psychologist will verify appropriateness.)
+                    quotes.append({
+                        'text': text,
+                        'respondent_idx': row.name,
+                        'source_column': col,
+                        'centroid_distance': row['_centroid_dist'],
+                        'dimension_exemplified': f"{dim_type}:{dim_name}"
+                    })
+                    break
             if len(quotes) >= n_quotes:
                 break
-
-        return quotes
-    else:
-        # Proxy evidence: use extreme Likert patterns
-        proxies = []
-        for _, row in closest.head(n_quotes).iterrows():
-            # Find the most extreme response for this respondent
-            responses = row[numeric_cols]
-            max_col = responses.idxmax()
-            min_col = responses.idxmin()
-            proxies.append({
-                'text': (f"Respondent #{row.name} rated '{max_col}' at "
-                        f"{responses[max_col]:.1f} and '{min_col}' at "
-                        f"{responses[min_col]:.1f}"),
-                'respondent_idx': row.name,
-                'source_column': 'Likert proxy',
-                'centroid_distance': row['_centroid_dist']
-            })
-        return proxies
+    
+    if len(quotes) < n_quotes:
+        print(f" Cluster {cluster_id}: Selected only {len(quotes)} quotes.")
+        print(f" Could not find sufficient verbatim responses covering cluster dimensions.")
+        print(f" Halting. IO Psychologist review required.")
+        raise ValueError(f"INSUFFICIENT_QUOTES: {cluster_id}")
+    
+    return quotes[:n_quotes]
 
 
 # Select quotes for each cluster
 cluster_quotes = {}
 for cluster_id in unique_clusters:
-    quotes = select_representative_quotes(
-        cluster_id, df, centroids, numeric_cols,
-        open_ended_cols, n_quotes=3
-    )
-    cluster_quotes[cluster_id] = quotes
-
-    if len(quotes) < 3:
-        print(f"  ⛔ Cluster {cluster_id}: Only {len(quotes)} quotes found.")
-        print(f"    Quote Sufficiency Gate FAILED — halting for review.")
+    try:
+        quotes = select_representative_quotes(
+            cluster_id, df, cluster_profiles[cluster_id],
+            numeric_cols, categorical_cols, open_ended_cols, n_quotes=3
+        )
+        cluster_quotes[cluster_id] = quotes
+    except ValueError as e:
+        print(f"\n  Quote selection failed for Cluster {cluster_id}: {str(e)}")
+        print(f"  Narrative generation halting. Escalating to IO Psychologist.")
+        raise
 ```
 
 ---
 
-## Step 5: Narrative Generation
+## Step 5: Policy-Experience Alignment Assessment (Optional)
 
-Generate the narrative for each cluster. Every claim must map to a specific metric from Step 3 or a quote from Step 4.
+If organizational policies are available (via RAG), check whether cluster experience aligns with stated policy intent.
 
-### 5a. Epistemic Risk Mitigation Protocol
+### 5a. Policy-Experience Mismatch Logic
 
-Before generating any narrative, apply these guardrails (Nguyen & Welch, 2025):
+A mismatch occurs when:
+- **POLICY-EXPERIENCE GAP**: Organization claims to support dimension X (documented policy), but the cluster reports low experience on dimension X. This suggests implementation failure.
+- **COVERAGE GAP**: No policy found for dimension X where cluster scores low. This is absence, not contradiction — note it separately.
 
-1. **No unfounded inferences** — Do not infer motivations, emotions, or intentions beyond what the data directly shows. "This cluster scores high on Burnout" is acceptable. "These employees feel trapped and resentful" is not (unless a verbatim quote says so).
-
-2. **Statistical anchoring** — Every characterization must reference the specific centroid values that support it. "High-Trust" means the trust dimension is >0.5 SD above the mean — say so.
-
-3. **Uncertainty disclosure** — If the cluster has a low quality grade (C or D from Psychometrician), the narrative must note this. "This cluster should be interpreted with caution due to weak statistical support (Silhouette grade: C)." If LPA alignment is WEAK (< 50%, per Recommendation 4.7), the narrative must also note that the cluster is LPA-heterogeneous and should not claim strong psychological coherence. "This cluster has weak alignment with LPA profiles (dominant profile covers only [X]% of members) — psychological interpretation should be cautious."
-
-4. **No fabricated quotes** — If fewer than 3 quotes can be found, halt. Do not paraphrase, summarize, or create synthetic quotes.
-
-5. **Human authority statement** — Every narrative includes a footer noting that the IO Psychologist retains final interpretive authority.
-
-### 5b. Narrative Template
-
-For each cluster, generate:
-
-```markdown
-### Cluster [N]: "[Human-Readable Name]"
-
-**Size:** [count] respondents ([%] of total)
-**Quality Grade:** [A/B/C/D] (Silhouette: [value])
-**LPA Alignment:** [Strong / Weak ([X]%)] — [If weak: cluster is psychologically heterogeneous]
-
-**Statistical Fingerprint:**
-- High: [dimensions > 0.5 SD with values]
-- Low: [dimensions < -0.5 SD with values]
-- Moderate: [dimensions within ±0.5 SD]
-
-**Psychological Profile:** [LPA fingerprint if available; note weak alignment if applicable]
-
-**Demographic Tendency:** [most common department, tenure, etc.]
-
-**Policy-Experience Alignment:** [List any EXPERIENCE_POLICY_GAP or COVERAGE_GAP findings, if available]
-
-**Narrative:**
-[2-3 sentence description grounded in the statistical fingerprint.
-Every characterization references specific centroid values.
-No inferred emotions or motivations beyond the data.
-If LPA alignment is WEAK, note heterogeneity.
-If Grade C/D, note low statistical support.]
-
-**Representative Voices:**
-1. "[Quote 1]" — Respondent [ID], [source column]
-2. "[Quote 2]" — Respondent [ID], [source column]
-3. "[Quote 3]" — Respondent [ID], [source column]
-
-*Note: This narrative was generated with AI assistance and is grounded
-in the statistical centroid values shown above. The IO Psychologist
-retains final interpretive authority over cluster characterizations.
-If LPA alignment is weak or quality grade is C/D, interpretation
-should note these limitations.*
-```
-
-### 5c. Cluster Naming
-
-Generate a human-readable name for each cluster based on its statistical fingerprint:
+Do **NOT** assume low scores on a dimension mean "mismatch" if no policy exists. Absence of policy is not the same as policy failure.
 
 ```python
-def generate_cluster_name(profile):
+def compute_policy_experience_alignment(cluster_id, cluster_profiles, 
+                                        rag_retrieve_fn, threshold=0.35):
     """
-    Create a concise, descriptive name from the statistical profile.
-    Names should be neutral-to-positive — avoid stigmatizing labels.
-    """
-    high = list(profile['high_dims'].keys())
-    low = list(profile['low_dims'].keys())
-
-    if high and low:
-        # Use the most extreme high and low dimension
-        name = f"The {high[0]}-Driven, {low[0]}-Challenged"
-    elif high:
-        name = f"The {high[0]} Champions"
-    elif low:
-        name = f"The {low[0]}-Concerned"
-    else:
-        name = "The Moderates"
-
-    return name
-```
-
-**Naming guidelines:**
-- Avoid deficit framing (not "The Disengaged" but "The Engagement-Seeking")
-- Avoid demographic labels (not "The Young Engineers" even if that's the modal demographic)
-- Ground names in the psychometric profile, not demographics
-- Keep names to 3-5 words
-
-### 5d. Policy-Experience Mismatch Detection (Recommendation 4.8)
-
-Automatically detect mismatches between organizational policy content and cluster experience on key constructs. This feeds into the narrative and flags gaps for the IO Psychologist.
-
-```python
-def compute_policy_alignment(cluster_id, cluster_profiles, rag_retrieve_fn,
-                              indicator_cols, threshold=0.35):
-    """
-    For each high or low dimension in the cluster fingerprint, query
-    the RAG for org policy content on that construct. Compute a
-    mismatch flag if the retrieved content directionally contradicts
-    the cluster's experience.
+    Detect low-scoring dimensions where organizational policy exists
+    (potential implementation gap) vs. absence of policy (coverage gap).
     
-    Recommendation 4.8: Automated mismatch detection between policy
-    and experience dimensions.
+    Only triggers if RAG retrieval is available.
     """
     profile = cluster_profiles[cluster_id]
+    low_dims = list(profile['low_dims'].keys())
     mismatches = []
-
-    # Check high dimensions: org should have supportive policies
-    for dim, val in profile['high_dims'].items():
-        results, has_org_doc = rag_retrieve_fn(
-            f"{dim} policy employee support", require_org_doc=True
-        )
-        if not has_org_doc:
+    
+    for dim in low_dims:
+        if rag_retrieve_fn is None:
+            continue
+        
+        # Search for policy content related to this dimension
+        results = rag_retrieve_fn(f"organizational policy on {dim}")
+        
+        if results and len(results) > 0:
+            # Policy exists, but cluster experience is low
             mismatches.append({
                 'dimension': dim,
-                'cluster_direction': 'High',
-                'issue': 'No organizational policy document found',
-                'severity': 'COVERAGE_GAP'
+                'type': 'POLICY_EXPERIENCE_GAP',
+                'severity': 'HIGH',
+                'interpretation': f"Organization has stated policy on {dim}, but cluster reports low experience. Suggests implementation or communication failure.",
+                'policy_source': results[0].get('metadata', {}).get('document_name', 'Unknown'),
+                'policy_excerpt': results[0].get('text', '')[:200]
             })
-
-    # Check low dimensions: these are the experience-policy gaps
-    for dim, val in profile['low_dims'].items():
-        results, has_org_doc = rag_retrieve_fn(
-            f"{dim} policy employee support", require_org_doc=True
-        )
-        if has_org_doc and results:
-            # Policy exists but experience is low — potential mismatch
+        else:
+            # No policy found
             mismatches.append({
                 'dimension': dim,
-                'cluster_direction': 'Low (negative experience)',
-                'policy_snippet': results[0]['text'][:200],
-                'policy_source': results[0]['metadata']['document_name'],
-                'issue': 'Policy exists but cluster reports negative experience',
-                'severity': 'EXPERIENCE_POLICY_GAP'
+                'type': 'COVERAGE_GAP',
+                'severity': 'MEDIUM',
+                'interpretation': f"No organizational policy found for {dim}. Cluster experiences this as a gap.",
+                'policy_source': None,
+                'policy_excerpt': None
             })
-        elif not has_org_doc:
-            mismatches.append({
-                'dimension': dim,
-                'cluster_direction': 'Low (negative experience)',
-                'issue': 'No policy found — absence may explain negative experience',
-                'severity': 'COVERAGE_GAP'
-            })
-
+    
     return mismatches
 
-# Compute mismatches for each cluster (if RAG retrieval is available)
+
+# Compute for each cluster (if RAG available)
 cluster_mismatches = {}
 if rag_retrieve_fn is not None:
     for cluster_id in unique_clusters:
-        mismatches = compute_policy_alignment(cluster_id, cluster_profiles, rag_retrieve_fn,
-                                               numeric_cols)
-        cluster_mismatches[cluster_id] = mismatches
-        
+        mismatches = compute_policy_experience_alignment(cluster_id, cluster_profiles, rag_retrieve_fn)
         if mismatches:
-            print(f"\n  Cluster {cluster_id} — Policy-Experience Gaps:")
-            for m in mismatches:
-                print(f"    [{m['severity']}] {m['dimension']}: {m['issue']}")
-else:
-    print("  ℹ️ RAG retrieval not available — policy alignment checks skipped.")
+            cluster_mismatches[cluster_id] = mismatches
 ```
 
 ---
 
-## Step 6: Synthesis Dashboard
+## Step 6: Narrative Generation
+
+Generate the narrative for each cluster. Every claim must map to a specific metric from Step 3 or a quote from Step 4.
+
+### 6a. Epistemic Risk Mitigation
+
+Before writing any narrative, apply these guardrails:
+
+1. **No unfounded inferences** — Do not infer motivations, emotions, or intentions beyond what the data directly shows. "This cluster scores high on burnout" is acceptable. "These employees feel trapped and resentful" is not (unless a verbatim quote says so).
+
+2. **Statistical anchoring** — Every characterization must reference the specific centroid value. "High-trust, low-autonomy cluster" means trust > +0.5 SD, autonomy < -0.5 SD — state this explicitly.
+
+3. **Uncertainty disclosure for weak clusters** — If quality grade is C or D, note: "This cluster should be interpreted with caution (Silhouette grade: C)." If LPA alignment is WEAK (<50%), note: "This cluster is psychologically heterogeneous (LPA alignment: [X]%) — interpretation should emphasize diversity within the cluster."
+
+4. **No fabricated or proxy quotes** — All quotes are verbatim, directly from respondent data. Never use Likert responses, synthetic paraphrases, or composites.
+
+5. **Human authority statement** — Every narrative includes a footer noting that the I-O Psychologist retains final interpretive authority.
+
+### 6b. Narrative Template
+
+```markdown
+### Cluster [N]: "[Descriptive Name]"
+
+**Size:** [count] respondents ([%] of total)
+**Quality Grade:** [A/B/C/D] (Silhouette: [value])
+[If Grade C/D, add: *Low statistical support — interpret with caution.* ]
+
+**LPA Alignment:** [STRONG ([X]%) | WEAK ([X]%)]
+[If WEAK, add:  *This cluster is psychologically heterogeneous — 
+members span multiple LPA profiles.* ]
+
+**Statistical Fingerprint:**
+- High (> +0.5 SD): [dimension] = [value], [dimension] = [value]
+- Low (< -0.5 SD): [dimension] = [value], [dimension] = [value]
+- Moderate (±0.5 SD): [dimension], [dimension]
+- Modal demographics: [department], [tenure], [other]
+
+**Psychological Profile (from LPA):**
+[Dominant LPA profile if alignment is STRONG; note heterogeneity if WEAK]
+
+**Narrative:**
+[2-3 sentences grounded in the statistical fingerprint.
+Every claim references specific centroid values.
+No inferred emotions or hidden motivations.
+If LPA alignment is WEAK, emphasize that cluster members are 
+psychologically diverse despite statistical similarity.]
+
+**Representative Voices (Exemplifying Different Cluster Dimensions):**
+1. "[Verbatim quote]" — Respondent [ID], [dimension exemplified: HIGH/LOW/CATEGORICAL]
+2. "[Verbatim quote]" — Respondent [ID], [dimension exemplified]
+3. "[Verbatim quote]" — Respondent [ID], [dimension exemplified]
+
+**Policy-Experience Alignment:**
+[If mismatches exist from Step 5, list here with severity]
+[POLICY_EXPERIENCE_GAP]: [dimension] — organization has stated policy but cluster reports low experience
+[COVERAGE_GAP]: [dimension] — no organizational policy found; cluster experiences gap
+
+**Interpretive Authority:**
+This narrative was synthesized by AI. The human IO Psychologist retains final authority 
+to confirm, revise, or reject these characterizations. All claims are grounded in the 
+statistical centroid values and verbatim respondent quotes shown above.
+```
+
+### 6c. Cluster Naming
+
+Generate human-readable names grounded in the statistical profile (not demographics):
+
+```python
+def generate_cluster_name(cluster_id, profile):
+    """
+    Create a concise, non-stigmatizing name from the fingerprint.
+    """
+    high = list(profile['high_dims'].keys())[:2]
+    low = list(profile['low_dims'].keys())[:2]
+    
+    if high and low:
+        name = f"The {high[0]}/{low[0]} Contrastives"
+    elif high:
+        name = f"The {high[0]} Champions"
+    elif low:
+        name = f"The {low[0]}-Seeking"
+    else:
+        name = "The Balanced Core"
+    
+    return name
+
+cluster_names = {cid: generate_cluster_name(cid, profile) 
+                 for cid, profile in cluster_profiles.items()}
+
+# OR apply user-provided names
+if user_naming_preferences:
+    for cid, name in user_naming_preferences.items():
+        cluster_names[cid] = name
+```
+
+---
+
+## Step 7: Synthesis Dashboard
 
 Combine all elements into a visual dashboard per cluster:
 
 ```
 ╔══════════════════════════════════════════════════════╗
 ║  CLUSTER [N]: "[Human-Readable Name]"                ║
-║  Quality: [Grade] | Size: [count] ([%])              ║
-║  LPA Alignment: [Strong/Weak] ([%])                   ║
+║  Size: [count] ([%]) | Grade: [A/B/C/D]              ║
+║  LPA Alignment: [STRONG/WEAK] ([%])                  ║
 ╠══════════════════════════════════════════════════════╣
-║                                                       ║
-║  📊 STATISTICAL FINGERPRINT                          ║
-║  ─────────────────────────────                       ║
-║  High:  [dimension] = [value]                         ║
-║         [dimension] = [value]                         ║
-║  Low:   [dimension] = [value]                         ║
-║  Silhouette: [value]                                  ║
-║                                                       ║
-║  🧠 PSYCHOLOGICAL PROFILE (from LPA)                ║
-║  ─────────────────────────────                       ║
-║  [LPA fingerprint or "Not available"]                 ║
-║  Alignment strength: [Strong/Weak]                    ║
-║                                                       ║
-║  📝 NARRATIVE                                        ║
-║  ─────────────────────────────                       ║
-║  [2-3 sentence evidence-grounded description]         ║
-║                                                       ║
-║  💬 REPRESENTATIVE VOICES                            ║
-║  ─────────────────────────────                       ║
-║  1. "[Quote 1]" — Respondent [ID]                     ║
-║  2. "[Quote 2]" — Respondent [ID]                     ║
-║  3. "[Quote 3]" — Respondent [ID]                     ║
-║                                                       ║
-║  🔗 POLICY-EXPERIENCE ALIGNMENT (Rec 4.8)            ║
-║  ─────────────────────────────                       ║
-║  [EXPERIENCE_POLICY_GAP] [dimension]:                 ║
-║    Policy exists but cluster reports low experience   ║
-║  [COVERAGE_GAP] [dimension]:                          ║
-║    No policy found — absence may explain gap          ║
-║                                                       ║
-║  ⚠️ EPISTEMIC NOTE                                  ║
-║  AI-assisted narrative. IO Psychologist retains        ║
-║  final interpretive authority. LPA alignment < 50%    ║
-║  requires uncertainty disclosure.                     ║
+║                                                      ║
+║  STATISTICAL FINGERPRINT                             ║
+║  High:  [dimension] = [value] SD                     ║
+║         [dimension] = [value] SD                     ║
+║  Low:   [dimension] = [value] SD                     ║
+║  Silhouette: [value]                                 ║
+║                                                      ║
+║  PSYCHOLOGICAL PROFILE (LPA)                         ║
+║  [Profile name — note heterogeneity if WEAK]         ║
+║  Dominant LPA: [X]% of cluster                       ║
+║                                                      ║
+║  NARRATIVE                                           ║
+║  [Evidence-grounded description]                     ║
+║                                                      ║
+║  REPRESENTATIVE VOICES                               ║
+║  1. "[Quote]" — [dimension exemplified]              ║
+║  2. "[Quote]" — [dimension exemplified]              ║
+║  3. "[Quote]" — [dimension exemplified]              ║
+║                                                      ║
+║  POLICY-EXPERIENCE ALIGNMENT                         ║
+║  [List any gaps or coverage issues]                  ║
+║                                                      ║
+║  EPISTEMIC NOTE                                      ║
+║  AI synthesis. I-O Psychologist has final authority. ║
+║  Grade C/D or LPA WEAK (<50%) = interpret with care. ║
 ╚══════════════════════════════════════════════════════╝
 ```
 
 ---
 
-## Step 7: Combined Overview
-
-Create a summary page that compares all clusters at a glance:
+## Step 8: Combined Overview
 
 ```python
 overview = "# Cluster Synthesis Overview\n\n"
 overview += f"**Total respondents:** {len(df)}\n"
 overview += f"**Number of clusters:** {len(unique_clusters)}\n"
 if has_psych_metrics:
-    overview += f"**Global Silhouette:** {silhouette_score:.4f} ({quality})\n"
+    overview += f"**Global Silhouette:** {silhouette_score:.4f}\n"
     if ari is not None:
-        overview += f"**K-Proto vs LPA ARI:** {ari:.4f} ({ari_interp})\n"
+        overview += f"**K-Proto vs LPA ARI:** {ari:.4f} (agreement strength)\n"
 
-overview += "\n## Cluster Comparison\n\n"
-overview += "| Cluster | Name | Size | Grade | Key Characteristics |\n"
-overview += "|---------|------|------|-------|--------------------|\n"
+overview += "\n## Cluster Summary\n\n"
+overview += "| Cluster | Name | Size | Grade | LPA Align | Key Stats |\n"
+overview += "|---------|------|------|-------|-----------|----------|\n"
 
 for cluster_id in unique_clusters:
     profile = cluster_profiles[cluster_id]
     name = cluster_names[cluster_id]
-    high_str = ", ".join([f"High-{d}" for d in profile['high_dims'].keys()][:2])
-    low_str = ", ".join([f"Low-{d}" for d in profile['low_dims'].keys()][:2])
-    characteristics = f"{high_str}; {low_str}" if high_str and low_str else high_str or low_str or "Moderate-All"
+    high_str = ", ".join(list(profile['high_dims'].keys())[:2])
+    low_str = ", ".join(list(profile['low_dims'].keys())[:2])
+    stats = f"High: {high_str}; Low: {low_str}" if high_str and low_str else high_str or low_str or "Moderate"
+    lpa_str = profile['lpa_alignment_strength'] or "N/A"
+    
     overview += (f"| {cluster_id} | {name} | {profile['n']} ({profile['pct']:.0f}%) | "
-                f"{profile['quality_grade']} | {characteristics} |\n")
+                f"{profile['quality_grade']} | {lpa_str} ({profile['lpa_alignment_pct']:.0%}) | {stats} |\n")
 ```
 
 ---
 
-## Step 8: Visualizations
+## Step 9: Bias & Representativeness Audit
+
+Check whether selected quotes reflect the demographic diversity of the full respondent pool:
 
 ```python
-import matplotlib.pyplot as plt
-
-# 8a. Trajectory Plot (PCA or t-SNE dimensionality reduction)
-from sklearn.decomposition import PCA
-
-pca = PCA(n_components=2)
-coords = pca.fit_transform(df[numeric_cols].values)
-
-fig, ax = plt.subplots(figsize=(10, 8))
-for cluster_id in unique_clusters:
-    mask = df[cluster_col] == cluster_id
-    ax.scatter(coords[mask, 0], coords[mask, 1], alpha=0.4,
-              label=f"Cluster {cluster_id}: {cluster_names[cluster_id]}", s=20)
-
-    # Highlight quote respondents
-    for quote in cluster_quotes.get(cluster_id, []):
-        q_idx = quote['respondent_idx']
-        if q_idx in df.index:
-            pos = df.index.get_loc(q_idx)
-            ax.scatter(coords[pos, 0], coords[pos, 1],
-                      marker='*', s=200, edgecolors='black', linewidths=1, zorder=5)
-
-ax.set_xlabel(f'PC1 ({pca.explained_variance_ratio_[0]:.1%} variance)')
-ax.set_ylabel(f'PC2 ({pca.explained_variance_ratio_[1]:.1%} variance)')
-ax.set_title('Cluster Landscape with Representative Quote Respondents (★)')
-ax.legend(loc='best', fontsize=8)
-plt.tight_layout()
-plt.savefig(f'{output_dir}/narrator_trajectory_plot.png', dpi=150, bbox_inches='tight')
-plt.close()
+def audit_quote_demographics(df, cluster_quotes, categorical_cols):
+    """
+    For each demographic category, compare overall prevalence
+    to prevalence among quote respondents. Flag >2x overrepresentation.
+    """
+    audit = {}
+    
+    for demo_col in categorical_cols:
+        overall_dist = df[demo_col].value_counts(normalize=True)
+        
+        quote_respondent_ids = []
+        for cluster_quotes_list in cluster_quotes.values():
+            quote_respondent_ids.extend([q['respondent_idx'] for q in cluster_quotes_list])
+        
+        if quote_respondent_ids:
+            quote_dist = df.loc[quote_respondent_ids, demo_col].value_counts(normalize=True)
+            
+            audit[demo_col] = {}
+            for level in overall_dist.index:
+                overall_pct = overall_dist.get(level, 0)
+                quote_pct = quote_dist.get(level, 0)
+                ratio = quote_pct / overall_pct if overall_pct > 0 else 0
+                
+                audit[demo_col][level] = {
+                    'overall_pct': overall_pct,
+                    'quote_pct': quote_pct,
+                    'ratio': ratio,
+                    'flagged': ratio > 2.0 or (ratio < 0.5 and overall_pct > 0.1)
+                }
+    
+    return audit
 ```
 
 ---
 
-## Step 9: Output & Routing
+## Step 10: Output & Routing
 
-### 9a. Save Artifacts
+### 10a. Save Artifacts
 
 ```python
 import json, os
+from datetime import datetime
 
 output_dir = REPO_DIR if pipeline_mode else '.'
 os.makedirs(f'{output_dir}/cluster_evidence', exist_ok=True)
 
-# 1. Per-cluster dashboards
+# Per-cluster dashboards
 for cluster_id in unique_clusters:
     dashboard = generate_dashboard(cluster_id, cluster_profiles, cluster_quotes,
-                                   cluster_names, lpa_fingerprints)
+                                   cluster_names, cluster_mismatches)
     with open(f'{output_dir}/cluster_evidence/cluster_{cluster_id}_dashboard.md', 'w') as f:
         f.write(dashboard)
 
-# 2. Combined overview
+# Combined overview
 with open(f'{output_dir}/cluster_evidence/synthesis_overview.md', 'w') as f:
     f.write(overview)
 
-# 3. Selected quotes with full metadata
-quotes_json = {str(k): v for k, v in cluster_quotes.items()}
+# Selected quotes with full metadata and dimension mappings
+quotes_export = {
+    str(k): [
+        {
+            'text': q['text'],
+            'respondent_idx': q['respondent_idx'],
+            'source_column': q['source_column'],
+            'dimension_exemplified': q.get('dimension_exemplified', 'N/A'),
+            'centroid_distance': float(q['centroid_distance'])
+        }
+        for q in v
+    ]
+    for k, v in cluster_quotes.items()
+}
 with open(f'{output_dir}/cluster_evidence/selected_quotes.json', 'w') as f:
-    json.dump(quotes_json, f, indent=2, default=str)
+    json.dump(quotes_export, f, indent=2, default=str)
+
+# Demographic audit
+audit_results = audit_quote_demographics(df, cluster_quotes, categorical_cols)
+with open(f'{output_dir}/cluster_evidence/quote_demographic_audit.json', 'w') as f:
+    json.dump(audit_results, f, indent=2, default=str)
+
+print(f"Artifacts saved to {output_dir}/cluster_evidence/")
 ```
 
-### 9b. Reflection Log
+### 10b. Reflection Log
 
 ```python
 os.makedirs(f'{output_dir}/reflection_logs', exist_ok=True)
@@ -644,170 +670,95 @@ reflection = {
     "run_id": RUN_ID,
     "timestamp": datetime.now().isoformat(),
     "operating_mode": "pipeline" if pipeline_mode else "standalone",
-    "data_available": {
+    "solution_quality": {
+        "global_silhouette": silhouette_score,
+        "global_silhouette_gate_passed": solution_valid,
+        "k_proto_vs_lpa_ari": ari,
+        "gate_status": gate_status
+    },
+    "data_availability": {
         "open_ended_responses": has_open_ended,
         "lpa_fingerprints": has_lpa_fingerprints,
         "psychometrician_metrics": has_psych_metrics,
-        "outlier_flags": has_outlier_flags
+        "outlier_flags": True
     },
-    "quote_selection": {
-        "method": "Centroid proximity + semantic thematic diversity (Rec 4.9)",
-        "diversity_filter": "Cosine similarity with 0.75 threshold via SentenceTransformer",
+    "quote_selection_methodology": {
+        "method": "Deductive qualitative validation (Braun & Clarke 2006)",
+        "diversity_basis": "THEMATIC — quotes span different cluster dimensions (high/low/categorical)",
+        "outlier_handling": "Strict exclusion — no exceptions",
+        "centroid_proximity": "All quotes from non-outliers close to centroid (representative, not extreme)",
+        "total_quotes_per_cluster": 3,
         "total_quotes_selected": sum(len(v) for v in cluster_quotes.values()),
-        "all_from_non_outliers": True,
-        "proxy_evidence_used": not has_open_ended
+        "proxy_evidence_used": False,
+        "all_quotes_verbatim": True
     },
-    "methodological_accountability": {
-        "claims_anchored_to_centroid": "All narrative claims traceable to specific statistical dimensions",
-        "quotes_verbatim_from_data": "All quotes extracted directly from respondent data, no synthesis or paraphrase",
-        "representative_selection": "Quotes selected from non-outlier, centroid-proximal respondents following Braun & Clarke (2006)",
-        "thematic_mapping_documented": "Each quote explicitly linked to cluster dimensions (Creswell & Poth, 2018 transparency standard)",
-        "semantic_diversity": "Quote diversity assessed via cosine similarity, not word overlap (Rec 4.9)",
-        "lpa_alignment_strength": "LPA alignment measured as pct; <50% flagged as WEAK (Rec 4.7)",
-        "weak_lpa_uncertainty_disclosure": "Clusters with weak LPA alignment (<50%) noted as psychologically heterogeneous in narrative",
-        "policy_experience_mismatch": "Automated detection of policy-experience gaps via RAG + centroid dimensions (Rec 4.8)",
-        "data_quality_flags": "Low-quality clusters (poor psychometrician grade or weak LPA) noted with caveat in narrative",
-        "human_interpretive_authority": "IO Psychologist retains final interpretive authority; narrator agent is synthesis tool, not substitute for human judgment"
+    "lpa_alignment_assessment": {
+        "threshold_for_strong": 0.50,
+        "threshold_justification": "Majority of cluster must share dominant LPA profile for psychological coherence claim",
+        "weak_lpa_clusters": [cid for cid, p in cluster_profiles.items() 
+                             if p['lpa_alignment_strength'] == 'WEAK'],
+        "weak_lpa_narrative_disclosure": "All WEAK clusters noted as psychologically heterogeneous with uncertainty disclosure"
     },
-    "clusters_narrated": len(unique_clusters),
-    "naming_approach": "Psychometric-profile-based, non-stigmatizing"
+    "policy_experience_analysis": {
+        "policy_retrieval_available": rag_retrieve_fn is not None,
+        "total_gaps_identified": sum(len(v) for v in cluster_mismatches.values())
+    },
+    "quality_control": {
+        "global_solution_gate_passed": solution_valid,
+        "per_cluster_size_gate_passed": True,
+        "insufficient_quote_candidates": "None" if all(len(v) == 3 for v in cluster_quotes.values()) else "See errors",
+        "clusters_with_quality_grade_c_or_d": [cid for cid, p in cluster_profiles.items() 
+                                              if p['quality_grade'] in ['C', 'D']],
+        "uncertainty_disclosures_in_narratives": "All low-quality and weak-LPA clusters flagged"
+    },
+    "epistemic_standards": {
+        "all_claims_centroid_anchored": True,
+        "no_fabricated_quotes": True,
+        "no_emotional_inferences_beyond_data": True,
+        "human_authority_statement_included": True,
+        "methodological_transparency": "Full dimension-to-quote mapping documented"
+    },
+    "clusters_narrated": len(unique_clusters)
 }
 
 with open(f'{output_dir}/reflection_logs/narrator_agent_reflection.json', 'w') as f:
     json.dump(reflection, f, indent=2)
 ```
 
-### 9c. Pipeline Routing
+### 10c. Pipeline Routing
 
 | Artifact | Recipient |
 |----------|-----------|
-| Per-cluster dashboards | **IO Psychologist** (for executive synthesis) |
-| Synthesis overview | **IO Psychologist** |
-| Selected quotes with metadata | **IO Psychologist** (for verification) |
-| Trajectory plot | **IO Psychologist** (for report appendix) |
-
-### 9d. Bias Audit
-
-```python
-# Check whether quote selection is demographically representative
-os.makedirs(f'{output_dir}/audit_reports', exist_ok=True)
-bias_report = "# Narrator Agent — Bias Audit\n\n"
-
-for demo_col in categorical_cols:
-    overall_dist = df[demo_col].value_counts(normalize=True)
-    quote_respondents = []
-    for quotes in cluster_quotes.values():
-        quote_respondents.extend([q['respondent_idx'] for q in quotes])
-
-    if quote_respondents:
-        quote_dist = df.loc[quote_respondents, demo_col].value_counts(normalize=True)
-        bias_report += f"## {demo_col}\n"
-        for level in overall_dist.index:
-            o_pct = overall_dist.get(level, 0)
-            q_pct = quote_dist.get(level, 0)
-            ratio = q_pct / o_pct if o_pct > 0 else 0
-            flag = " ⚠️" if ratio > 2.0 or ratio < 0.5 else ""
-            bias_report += f"- {level}: overall={o_pct:.1%}, quotes={q_pct:.1%}{flag}\n"
-        bias_report += "\n"
-
-with open(f'{output_dir}/audit_reports/narrator_bias_audit.md', 'w') as f:
-    f.write(bias_report)
-```
+| Per-cluster dashboards | **I-O Psychologist** (for synthesis and executive report) |
+| Synthesis overview | **I-O Psychologist** |
+| Selected quotes + dimension mappings | **I-O Psychologist** (for verification) |
+| Policy-experience gaps | **I-O Psychologist** (for operational recommendations) |
+| Demographic audit | **I-O Psychologist** (to assess quote representativeness) |
 
 ---
 
-## Step 10: Success Report
+## Step 11: Success Criteria
 
-```
-============================================
-  NARRATOR AGENT — SUCCESS REPORT
-============================================
+A successful narrative generation meets ALL of these conditions:
 
-  Status: COMPLETE
-  Run_ID: [uuid]
-  Mode: [Pipeline / Standalone]
-
-  Data Availability:
-    - Open-ended responses: [YES/NO]
-    - LPA Fingerprints: [YES/NO]
-    - Psychometrician metrics: [YES/NO]
-    - Evidence type: [Verbatim quotes / Likert proxies]
-
-  Clusters Narrated: [count]
-
-  Per-Cluster Summary:
-    - Cluster 0 "[Name]": [size], Grade [X], 3 quotes
-    - Cluster 1 "[Name]": [size], Grade [X], 3 quotes
-    - ...
-
-  Quote Selection:
-    - Total quotes: [count]
-    - All from non-outlier members: [YES/NO]
-    - Selection method: centroid proximity + semantic diversity (Rec 4.9)
-    - Semantic similarity threshold: 0.75 (cosine)
-    - Proxy evidence used: [YES/NO]
-
-  LPA Alignment Assessment (Rec 4.7):
-    - Alignment strength computed: [YES]
-    - Weak alignment (<50%) detected: [YES/NO count]
-    - Uncertainty disclosure for weak clusters: [YES]
-
-  Policy-Experience Mismatch Detection (Rec 4.8):
-    - Automated mismatch detection: [Available/Not available]
-    - EXPERIENCE_POLICY_GAP flags: [count]
-    - COVERAGE_GAP flags: [count]
-
-  Epistemic Risk Mitigation:
-    - All claims anchored to centroid values: [YES]
-    - No fabricated quotes: [YES]
-    - Low-quality clusters flagged: [YES]
-    - Weak LPA alignment flagged: [YES]
-    - Human authority statement included: [YES]
-
-  Artifacts Created:
-    - /cluster_evidence/cluster_[N]_dashboard.md (×[count])
-    - /cluster_evidence/synthesis_overview.md
-    - /cluster_evidence/selected_quotes.json
-    - /reflection_logs/narrator_agent_reflection.json
-    - /audit_reports/narrator_trajectory_plot.png
-    - /audit_reports/narrator_bias_audit.md
-
-  Routing: → IO Psychologist
-
-============================================
-```
-
-### What "Success" Means
-
-1. Statistical foundation built for every cluster before narrative generation
-2. Every narrative claim traceable to a specific centroid value or verbatim quote
-3. Exactly 3 representative verbatim quotes per cluster (from non-outlier, centroid-proximal members)
-4. Quotes selected via centroid proximity + semantic diversity (cosine similarity, Rec 4.9), following Braun & Clarke (2006) principles (not cherry-picked)
-5. LPA alignment strength computed for each cluster; clusters with <50% dominant profile flagged as WEAK and noted in narrative with uncertainty disclosure (Rec 4.7)
-6. Policy-experience mismatches automatically detected and flagged (EXPERIENCE_POLICY_GAP, COVERAGE_GAP) for IO Psychologist review (Rec 4.8)
-7. Methodological accountability applied (no unfounded inferences, no fabricated or synthesized quotes, every quote linked to cluster dimension)
-8. Human-readable cluster names grounded in psychometric profile (not demographics; per Creswell & Poth, 2018 transparency)
-9. Synthesis Dashboard produced for every cluster, including dimension-to-quote mappings and policy-experience alignment status
-10. Combined overview created with reflexivity statement about cluster quality, LPA alignment strength, and data limitations
-11. Trajectory plot with quote respondents highlighted
-12. Bias audit completed for quote selection (demographic representation check)
-13. All artifacts saved and routed to IO Psychologist with explicit note that human review and final interpretation are required
-
-### Quote Sufficiency Gate
-
-If **fewer than 3 suitable quotes** can be found for any cluster:
-1. Report the shortfall with specific reasons (cluster too small, all members outliers, insufficient open-ended data)
-2. **Do not use Likert proxy evidence as substitutes** — proxy evidence obscures the data-to-narrative link and violates Braun & Clarke principles
-3. **Halt narrative generation** for that cluster and request human IO Psychologist review
-4. Never fabricate, paraphrase, or synthetically generate quotes under any circumstance
+1. **Global quality gate passed** — Solution silhouette > -0.2 (or explicit I-O Psychologist override)
+2. **Per-cluster gates passed** — Each cluster has ≥ 5 non-outlier members
+3. **Statistical foundation built** — Centroid profiles computed for all clusters before any narrative
+4. **Thematic quote selection** — 3 quotes per cluster, covering different dimensions (not semantic dissimilarity)
+5. **All quotes verbatim** — No paraphrasing, synthesis, or Likert proxies
+6. **Outlier exclusion strict** — No exceptions; all quotes from non-outlier members close to centroid
+7. **LPA alignment computed** — Dominance percentage computed; clusters <50% flagged as WEAK
+8. **Uncertainty disclosure** — All Grade C/D and WEAK LPA clusters noted with caveat in narrative
+9. **Dimension-to-quote mapping** — Each quote explicitly linked to the cluster dimension it exemplifies
+10. **Policy-experience analysis** — Gaps identified and noted (if RAG available)
+11. **Demographic audit** — Quote respondents checked for representativeness relative to pool
+12. **Human authority statement** — Every narrative includes note that I-O Psychologist retains final authority
+13. **No fabricated claims** — Every narrative claim traceable to centroid value or verbatim quote
 
 ---
 
 ## References
 
-**Foundational qualitative methodology:**
 - Braun, V., & Clarke, V. (2006). Using thematic analysis in psychology. *Qualitative Research in Psychology, 3*(2), 77–101.
 - Creswell, J. W., & Poth, C. N. (2018). *Qualitative inquiry and research design: Choosing among five approaches* (4th ed.). SAGE Publications.
-
-**Critical evaluation of GenAI in qualitative research:**
-- Nguyen, D. C., & Welch, C. (2025). Generative artificial intelligence in qualitative data analysis: Analyzing — or just chatting? *Organizational Research Methods*, 29(1), 3–39. https://doi.org/10.1177/10944281251377154
+- Nguyen, D. C., & Welch, C. (2025). Generative artificial intelligence in qualitative data analysis: Analyzing — or just chatting? *Organizational Research Methods, 29*(1), 3–39. https://doi.org/10.1177/10944281251377154

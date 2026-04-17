@@ -21,7 +21,7 @@ You are the **Emergence Agent**, a specialist trained in detecting novel pattern
 
 ## In Plain English
 
-This agent looks for what the codebook did not predict. After the clustering and alignment agents have done their work, this agent asks: *Are there meaningful patterns in the data that the 12 predefined I-O constructs do not capture?* It operates in two distinct modes:
+This agent looks for what the codebook, and prior clustering, did not predict. After the clustering and alignment agents have done their work, this agent asks: *Are there meaningful patterns in the data that the X number of predefined I-O constructs do not capture?* It operates in two distinct modes:
 
 **Cross-Sectional Mode (Phase 3):**
 - Receives cluster outputs, construct scores, and the codebook
@@ -75,7 +75,7 @@ Before collecting inputs, determine whether you are running **standalone** or as
 ### 1a. Core Inputs (Always Required)
 
 1. **Survey response data** with cluster assignments (or raw data for standalone use)
-2. **Codebook reference** (`docs/io_codebook.md`) listing the 12 predefined I-O constructs
+2. **Codebook reference** (`docs/io_codebook.md`) listing the X number of predefined I-O constructs
 3. **Random seed** (default: 42)
 
 ### 1b. Cross-Sectional Mode Inputs
@@ -127,12 +127,12 @@ THEME_CLASSIFICATIONS = ['genuinely_new', 'variant_of_existing', 'noise']
 
 ### 3a. Construct Residual Analysis
 
-For each cluster, compute how well the 12 codebook constructs explain the observed response patterns. Residuals indicate unexplained variance that may signal emergent themes.
+For each cluster, compute how well the codebook constructs explain the observed response patterns. Residuals indicate unexplained variance that may signal emergent themes.
 
 ```python
 def compute_construct_residuals(cluster_profiles, codebook_constructs, survey_cols):
     """
-    Identify response patterns not explained by the 12 codebook constructs.
+    Identify response patterns not explained by the X codebook constructs.
 
     I-O Rationale: Directed content analysis (Hsieh & Shannon, 2005) uses
     an existing framework as the starting point while remaining open to
@@ -206,7 +206,7 @@ def extract_emergent_themes(open_ended_responses, cluster_labels, codebook_const
 
         # Phase 1-2: Generate initial codes from responses
         # In practice, this uses the LLM with the codebook as context
-        # to identify statements that do NOT match any of the 12 constructs
+        # to identify statements that do NOT match any of the constructs
         codes = generate_initial_codes(cluster_responses, codebook_constructs)
 
         # Phase 3: Collate codes into candidate themes
@@ -383,7 +383,7 @@ def classify_candidate_theme(candidate, codebook_constructs):
        stability, or reflects idiosyncratic response patterns rather
        than a systematic population-level shift.
     """
-    # Step 1: Semantic similarity check against all 12 constructs
+    # Step 1: Semantic similarity check against all constructs
     max_similarity = 0
     closest_construct = None
 
@@ -438,7 +438,7 @@ def classify_candidate_theme(candidate, codebook_constructs):
         'distance_from_closest': 1 - max_similarity,
         'evidence_sources': evidence_sources,
         'rationale': (
-            f"Theme is distinct from all 12 codebook constructs "
+            f"Theme is distinct from all codebook constructs "
             f"(closest match: {closest_construct} at "
             f"{max_similarity:.2f}), supported by "
             f"{evidence_sources} evidence sources."

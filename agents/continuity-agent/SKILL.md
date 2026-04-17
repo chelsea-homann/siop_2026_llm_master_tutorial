@@ -3,7 +3,7 @@ name: continuity-agent
 description: >
   Continuity Agent — Longitudinal Alignment Specialist for survey data.
   Maps current respondents to historical cluster centroids using composite
-  distance metrics (JSD + Hamming) to track workforce migration and prevent
+  distance metrics (JSD + Hamming) to track workforce migration and detect
   label drift across survey waves. Implements measurement invariance checks,
   multi-metric alignment, weak-fit flagging with statistical thresholds,
   demographic proportionality auditing, and transition probability estimation.
@@ -90,16 +90,16 @@ missing_in_followup = baseline_cols - followup_cols
 missing_in_baseline = followup_cols - baseline_cols
 
 if missing_in_followup:
-    print(f"⛔ Columns in baseline but NOT in follow-up: {missing_in_followup}")
-    print("  Cannot proceed — datasets must share the same survey items.")
+    print(f"Columns in baseline but NOT in follow-up: {missing_in_followup}")
+    print("Cannot proceed — datasets must share the same survey items.")
 if missing_in_baseline:
-    print(f"⚠️ New columns in follow-up not in baseline: {missing_in_baseline}")
-    print("  These will be excluded from alignment (no historical reference).")
+    print(f"New columns in follow-up not in baseline: {missing_in_baseline}")
+    print("These will be excluded from alignment (no historical reference).")
 
 # Verify matching data types
 for col in shared_cols:
     if baseline_df[col].dtype != followup_df[col].dtype:
-        print(f"⚠️ Type mismatch: {col} is {baseline_df[col].dtype} in baseline "
+        print(f"Type mismatch: {col} is {baseline_df[col].dtype} in baseline "
               f"but {followup_df[col].dtype} in follow-up. Coercing to match.")
 ```
 
@@ -120,7 +120,7 @@ print(f"Follow-up: N={n_followup}")
 # Sample size change warning
 pct_change = (n_followup - n_baseline) / n_baseline * 100
 if abs(pct_change) > 30:
-    print(f"⚠️ Sample size changed by {pct_change:+.1f}%. Large shifts may affect "
+    print(f"Sample size changed by {pct_change:+.1f}%. Large shifts may affect "
           f"comparability. Investigate whether sampling changed between waves.")
 ```
 
@@ -140,9 +140,9 @@ for col in numeric_cols:
     stat, p = ks_2samp(baseline_df[col].dropna(), followup_df[col].dropna())
     if p < 0.01:
         drift_flags.append(col)
-        print(f"  ⚠️ {col}: KS={stat:.3f}, p={p:.4f} — significant distributional shift")
+        print(f"  {col}: KS={stat:.3f}, p={p:.4f} — significant distributional shift")
     else:
-        print(f"  ✅ {col}: KS={stat:.3f}, p={p:.4f}")
+        print(f"  {col}: KS={stat:.3f}, p={p:.4f}")
 
 # Categorical columns: Chi-square test of proportions
 for col in categorical_cols:
@@ -159,12 +159,12 @@ for col in categorical_cols:
         chi2, p, dof, expected = chi2_contingency(observed)
         if p < 0.01:
             drift_flags.append(col)
-            print(f"  ⚠️ {col}: χ²={chi2:.1f}, p={p:.4f} — demographic composition shifted")
+            print(f"  {col}: χ²={chi2:.1f}, p={p:.4f} — demographic composition shifted")
         else:
-            print(f"  ✅ {col}: χ²={chi2:.1f}, p={p:.4f}")
+            print(f"  {col}: χ²={chi2:.1f}, p={p:.4f}")
 
 if len(drift_flags) > len(numeric_cols + categorical_cols) * 0.5:
-    print(f"\n  ⛔ WARNING: >50% of variables show significant distributional shifts.")
+    print(f"\n  WARNING: >50% of variables show significant distributional shifts.")
     print(f"  Cluster alignment may be unreliable. Consider re-clustering from scratch.")
     print(f"  (This does not necessarily mean drift — it could reflect genuine change.)")
 ```
@@ -181,7 +181,7 @@ for col in numeric_cols:
     if baseline_sd > 0:
         followup_df[col] = (followup_df[col] - baseline_mean) / baseline_sd
     else:
-        print(f"⚠️ {col}: Zero variance in baseline. Cannot standardize.")
+        print(f"{col}: Zero variance in baseline. Cannot standardize.")
 ```
 
 This is critical — if each wave is standardized to its own mean/SD, genuine shifts in workforce attitudes would be masked.
@@ -325,7 +325,7 @@ print(f"  Ambiguous alignments (margin < {LOW_MARGIN_THRESHOLD}): "
 
 # Stability gate
 if pct_weak_fits > 40:
-    print("  ⛔ STABILITY WARNING: >40% Weak-Fits. Alignment is unreliable.")
+    print("  STABILITY WARNING: >40% Weak-Fits. Alignment is unreliable.")
     print("  Consider re-clustering from scratch rather than aligning to historical structure.")
     print("  Halting for human review.")
 ```
@@ -363,11 +363,11 @@ if respondent_id_col and respondent_id_col in baseline_df.columns and \
     print(f"\nOverall stability rate: {stayed:.1%}")
     
     if stayed < 0.50:
-        print("⚠️ <50% stability. Substantial workforce migration occurred.")
+        print(" <50% stability. Substantial workforce migration occurred.")
     elif stayed < 0.70:
-        print("⚠️ 50-70% stability. Moderate workforce migration.")
+        print(" 50-70% stability. Moderate workforce migration.")
     else:
-        print("✅ >70% stability. Workforce segments are relatively stable.")
+        print(" >70% stability. Workforce segments are relatively stable.")
 else:
     print("\nNo panel linkage available — transition analysis skipped.")
     print("(Aggregate alignment proportions reported instead.)")
@@ -405,7 +405,7 @@ for demo_col in categorical_cols:
         ratio = wf_pct / overall_pct if overall_pct > 0 else 0
         
         if ratio > 1.5:
-            print(f"  ⚠️ {demo_col}='{level}': {ratio:.1f}x overrepresented in Weak-Fits "
+            print(f"  {demo_col}='{level}': {ratio:.1f}x overrepresented in Weak-Fits "
                   f"(Weak-Fit: {wf_pct:.1%}, Overall: {overall_pct:.1%})")
 
 print("\nDisproportionate Weak-Fit representation may indicate that the historical")

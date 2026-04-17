@@ -149,7 +149,7 @@ print(f"Numeric columns detected: {len(numeric_cols)}")
 
 # Validate minimum requirements
 if len(numeric_cols) == 0:
-    print("⛔ CRITICAL: No numeric columns found. Cannot proceed with survey analysis.")
+    print("CRITICAL: No numeric columns found. Cannot proceed with survey analysis.")
     # Halt and ask user to verify data format
 ```
 
@@ -268,11 +268,11 @@ print(f"\n  MULTI-HURDLE RESULT: {n_careless} respondents ({pct_careless:.1f}%) 
       f"flagged on ≥2 indicators")
 
 if pct_careless > 15:
-    print("  ⚠️ WARNING: >15% flagged as careless. Review data collection procedures.")
+    print("  WARNING: >15% flagged as careless. Review data collection procedures.")
 elif pct_careless > 5:
-    print("  ⚠️ CAUTION: 5-15% flagged. This is within typical ranges for online surveys.")
+    print("  CAUTION: 5-15% flagged. This is within typical ranges for online surveys.")
 else:
-    print("  ✅ <5% flagged. Data quality appears good.")
+    print("  <5% flagged. Data quality appears good.")
 ```
 
 **Action:** Present flagged respondents to the user and ask whether to exclude them. Do not auto-remove without user confirmation.
@@ -288,7 +288,7 @@ missing_pct = df[survey_item_cols + categorical_cols].isnull().mean() * 100
 
 high_missing = missing_pct[missing_pct > 20]
 if len(high_missing) > 0:
-    print("⚠️ Columns exceeding 20% missing:")
+    print("Columns exceeding 20% missing:")
     for col, pct in high_missing.items():
         print(f"  {col}: {pct:.1f}% missing")
     print("\nPause: Review these columns before proceeding.")
@@ -312,7 +312,7 @@ for col in survey_item_cols:
                 observed = df.loc[~missing_mask, other_col].mean()
                 missing_group = df.loc[missing_mask, other_col].mean()
                 if abs(observed - missing_group) > 0.5:
-                    print(f"  ⚠️ {col} missingness may be MAR: "
+                    print(f"  {col} missingness may be MAR: "
                           f"mean of {other_col} differs by {abs(observed - missing_group):.2f}")
 
 # Imputation for columns passing the gate
@@ -392,9 +392,9 @@ for col in retained_survey_cols:
 
     if issues:
         distribution_issues.append((col, issues))
-        print(f"  ⚠️ {col}: {', '.join(issues)}")
+        print(f"  {col}: {', '.join(issues)}")
     else:
-        print(f"  ✅ {col}: skew={sk:.2f}, kurtosis={kt:.2f}, outliers={n_outliers_iqr}")
+        print(f"  {col}: skew={sk:.2f}, kurtosis={kt:.2f}, outliers={n_outliers_iqr}")
 
 if distribution_issues:
     print(f"\n  {len(distribution_issues)} columns with distribution concerns.")

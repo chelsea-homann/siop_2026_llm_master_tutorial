@@ -5,7 +5,7 @@ description: >
   survey analysis. Establishes baseline workforce segments using K-Prototypes
   clustering (Huang, 1998) for datasets containing both categorical demographics
   and continuous survey responses. Implements Cao initialization, elbow method
-  with multiple validation indices (cost, silhouette, Calinski-Harabasz),
+  with multiple validation indices (cost, silhouette),
   gamma parameter tuning, cluster stability assessment, and centroid
   interpretation. Works standalone or inside the I-O Psychology clustering
   pipeline during INITIALIZATION_MODE. Use when the user mentions K-Prototypes,
@@ -109,10 +109,10 @@ print(f"Categorical columns ({len(categorical_cols)}): {categorical_cols}")
 print(f"Numeric columns ({len(numeric_cols)}): {numeric_cols}")
 
 if len(categorical_cols) == 0:
-    print("⚠️ WARNING: No categorical columns. Consider using K-Means or LPA instead.")
-    print("   K-Prototypes requires at least one categorical variable.")
+    print("WARNING: No categorical columns. Consider using K-Means or LPA instead.")
+    print("K-Prototypes requires at least one categorical variable.")
 if len(numeric_cols) == 0:
-    print("⚠️ WARNING: No numeric columns. Consider using K-Modes instead.")
+    print("WARNING: No numeric columns. Consider using K-Modes instead.")
 ```
 
 ### 2b. Sample Size Check
@@ -122,16 +122,16 @@ n = len(df)
 total_features = len(categorical_cols) + len(numeric_cols)
 
 if n < 100:
-    print("⛔ CRITICAL: N < 100. Clustering results will be highly unstable.")
+    print("CRITICAL: N < 100. Clustering results will be highly unstable.")
 elif n < 200:
-    print("⚠️ CAUTION: N < 200. Limit K range and interpret with caution.")
+    print("CAUTION: N < 200. Limit K range and interpret with caution.")
 else:
-    print(f"✅ N = {n}. Adequate for cluster analysis.")
+    print(f"N = {n}. Adequate for cluster analysis.")
 
 # Ratio check
 ratio = n / total_features
 if ratio < 10:
-    print(f"⚠️ Low observation-to-feature ratio ({ratio:.1f}). Consider reducing features.")
+    print(f"Low observation-to-feature ratio ({ratio:.1f}). Consider reducing features.")
 ```
 
 ### 2c. Categorical Level Check
@@ -140,12 +140,12 @@ if ratio < 10:
 for col in categorical_cols:
     n_levels = df[col].nunique()
     if n_levels > 20:
-        print(f"⚠️ {col}: {n_levels} levels. High-cardinality categoricals can degrade "
+        print(f"{col}: {n_levels} levels. High-cardinality categoricals can degrade "
               f"K-Prototypes. Consider binning or excluding.")
     elif n_levels < 2:
-        print(f"⚠️ {col}: Only {n_levels} level. No discriminating power — exclude.")
+        print(f"{col}: Only {n_levels} level. No discriminating power — exclude.")
     else:
-        print(f"✅ {col}: {n_levels} levels")
+        print(f"{col}: {n_levels} levels")
 ```
 
 ### 2d. Missing Data Check
@@ -155,16 +155,16 @@ K-Prototypes does not natively handle missing values. Verify completeness:
 ```python
 total_missing = df[categorical_cols + numeric_cols].isnull().any(axis=1).sum()
 if total_missing > 0:
-    print(f"⚠️ {total_missing} rows with missing values ({total_missing/n*100:.1f}%).")
-    print("  K-Prototypes requires complete cases. Options:")
-    print("  1. Listwise deletion (if <5% missing)")
-    print("  2. Imputation (Data Steward should have handled this)")
+    print(f"{total_missing} rows with missing values ({total_missing/n*100:.1f}%).")
+    print(" K-Prototypes requires complete cases. Options:")
+    print(" 1. Listwise deletion (if <5% missing)")
+    print(" 2. Imputation (Data Steward should have handled this)")
     # Apply listwise deletion for remaining cases
     df_complete = df.dropna(subset=categorical_cols + numeric_cols)
-    print(f"  After listwise deletion: {len(df_complete)} rows retained.")
+    print(f" After listwise deletion: {len(df_complete)} rows retained.")
 else:
     df_complete = df.copy()
-    print("✅ No missing values in clustering columns.")
+    print("No missing values in clustering columns.")
 ```
 
 ---
@@ -182,7 +182,7 @@ sds = df_complete[numeric_cols].std()
 already_standardized = (means.abs() < 0.01).all() and ((sds - 1).abs() < 0.01).all()
 
 if already_standardized:
-    print("✅ Numeric columns already standardized. Using as-is.")
+    print("Numeric columns already standardized. Using as-is.")
 else:
     print("Applying Z-score standardization to numeric columns.")
     df_complete[numeric_cols] = df_complete[numeric_cols].apply(zscore)
@@ -197,19 +197,24 @@ The gamma parameter (γ) controls the trade-off between numeric (Euclidean) and 
 **Default heuristic:** γ = mean standard deviation of numeric columns (after standardization, this is approximately 1.0, but should be calculated from the data).
 
 ```python
-# Huang's default: gamma = average SD of numeric attributes
-gamma_default = df_complete[numeric_cols].std().mean()
-print(f"Gamma (Huang default): {gamma_default:.4f}")
+# Huang (1998) default: gamma = mean SD of numeric columns BEFORE standardization
+# This ensures equal weighting of categorical and numeric distances post-standardization
+gamma_default = df[numeric_cols].std().mean()  # Compute from raw data, not standardized
 
-# For standardized data, gamma ≈ 1.0 gives equal weight
-# Lower gamma → numeric variables dominate
-# Higher gamma → categorical variables dominate
+if user_gamma:
+    gamma = user_gamma
+    gamma_rationale = f"User-specified gamma={gamma}"
+else:
+    gamma = gamma_default
+    gamma_rationale = f"Huang default: mean SD of raw numeric columns = {gamma:.4f}"
 
-# If user didn't specify, use default
-gamma = user_gamma if user_gamma else gamma_default
+print(f"Gamma: {gamma:.4f} ({gamma_rationale})")
+print("After Z-score standardization of numeric columns, gamma is applied")
+print("to the scaled distance matrix (not recomputed from standardized SD).")
 ```
 
-For critical applications, consider testing a range of gamma values (0.5, 1.0, 2.0) and comparing solutions via silhouette scores. Document the gamma used and its rationale.
+Test a range of gamma values (0.5, 1.0, 2.0) and compare solutions via silhouette scores. Document the gamma used and its rationale.
+
 ```python
 gamma_candidates = [0.5, 1.0, 2.0]
 gamma_results = {}
@@ -329,7 +334,7 @@ for k in k_range:
 best_sil_k = max(silhouette_scores, key=silhouette_scores.get)
 print(f"\nBest Silhouette at K={best_sil_k} ({silhouette_scores[best_sil_k]:.4f})")
 
-print("\n⚠️ NOTE: These are enumeration-phase silhouette scores for K selection.")
+print("\nNOTE: These are enumeration-phase silhouette scores for K selection.")
 print("The Psychometrician Agent will perform comprehensive silhouette audit")
 print("on the final model, including per-cluster analysis, outlier flagging,")
 print("bias audit, and comparison to LPA (via ARI).")
@@ -349,7 +354,7 @@ def select_optimal_k(results_df, silhouette_scores, elbow_k):
     valid = results_df[results_df['min_cluster_pct'] >= 5.0]
     if valid.empty:
         valid = results_df  # relax constraint if all solutions have small clusters
-        print("⚠️ All solutions have clusters < 5%. Relaxing minimum size constraint.")
+        print(" All solutions have clusters < 5%. Relaxing minimum size constraint.")
     
     valid_ks = valid['K'].values
     
@@ -397,6 +402,8 @@ for k in range(optimal_k):
 ```
 
 ### 6a. Centroid Interpretation
+
+The code assumes centroids are stored as [numeric_cols, categorical_cols]
 
 ```python
 # Numeric centroids (means per cluster)
@@ -453,40 +460,66 @@ Assess whether the solution is stable via bootstrap resampling:
 
 ```python
 from sklearn.metrics import adjusted_rand_score
+from scipy.optimize import linear_sum_assignment
+
+def match_labels(true_labels, pred_labels):
+    """
+    Match predicted cluster labels to true labels using Hungarian algorithm.
+    Solves label permutation problem in bootstrap resampling.
+    """
+    n_clusters = len(np.unique(true_labels))
+    # Build contingency matrix
+    contingency = np.zeros((n_clusters, n_clusters))
+    for i in range(len(true_labels)):
+        contingency[true_labels[i], pred_labels[i]] += 1
+    # Find optimal label mapping
+    row_ind, col_ind = linear_sum_assignment(-contingency)
+    # Remap predicted labels
+    label_mapping = {col_ind[i]: row_ind[i] for i in range(len(row_ind))}
+    matched_labels = np.array([label_mapping.get(label, label) for label in pred_labels])
+    return matched_labels
 
 n_bootstrap = 50
 ari_scores = []
+
+print(f"\nBOOTSTRAP STABILITY ASSESSMENT (n={n_bootstrap} resamples)")
+print("Method: Resampling with replacement, predicting with original model centroids")
+print("Label matching: Hungarian algorithm (handles cluster label permutation)\n")
 
 for b in range(n_bootstrap):
     # Resample with replacement
     boot_idx = np.random.choice(len(data_matrix), size=len(data_matrix), replace=True)
     boot_data = data_matrix[boot_idx]
     
-    kproto_boot = KPrototypes(
-        n_clusters=optimal_k, init='Cao',
-        random_state=SEED + b, n_init=5, max_iter=100
-    )
-    boot_labels = kproto_boot.fit_predict(boot_data, categorical=categorical_indices)
+    # Predict using ORIGINAL model centroids (not refit on bootstrap sample)
+    # This assesses stability of cluster assignments, not model variability
+    boot_labels = best_model.predict(boot_data, categorical=categorical_indices)
     
-    # Map back to original indices for comparison
+    # Get original labels for resampled indices
     original_labels = labels[boot_idx]
-    ari = adjusted_rand_score(original_labels, boot_labels)
+    
+    # Match bootstrap labels to original labels (solve permutation problem)
+    matched_boot_labels = match_labels(original_labels, boot_labels)
+    
+    # Compute ARI with matched labels
+    ari = adjusted_rand_score(original_labels, matched_boot_labels)
     ari_scores.append(ari)
 
 mean_ari = np.mean(ari_scores)
 sd_ari = np.std(ari_scores)
 
-print(f"\nBOOTSTRAP STABILITY (n={n_bootstrap})")
-print(f"  Mean ARI: {mean_ari:.3f} ± {sd_ari:.3f}")
+print(f"Bootstrap ARI (matched): {mean_ari:.3f} ± {sd_ari:.3f}")
 
 if mean_ari > 0.80:
-    print("  ✅ Highly stable solution")
+    stability_interpretation = "Highly stable solution"
 elif mean_ari > 0.60:
-    print("  ✅ Moderately stable solution")
+    stability_interpretation = "Moderately stable solution"
 elif mean_ari > 0.40:
-    print("  ⚠️ Weak stability — interpret with caution")
+    stability_interpretation = "Weak stability — interpret with caution"
 else:
-    print("  ⛔ Unstable solution — consider fewer clusters or different features")
+    stability_interpretation = "Unstable solution — consider fewer clusters or different features"
+
+print(f"Interpretation: {stability_interpretation}")
 ```
 
 ---
@@ -531,7 +564,7 @@ plt.close()
 # 8c. Centroid Heatmap (numeric dimensions)
 fig, ax = plt.subplots(figsize=(12, max(4, optimal_k)))
 im = ax.imshow(numeric_centroids.values.astype(float), cmap='RdBu_r', aspect='auto',
-               vmin=-2, vmax=2)
+               vmin=-np.ceil(numeric_centroids.values.max()), vmax=np.ceil(numeric_centroids.values.max()))
 ax.set_xticks(range(len(numeric_cols)))
 ax.set_xticklabels(numeric_cols, rotation=45, ha='right')
 ax.set_yticks(range(optimal_k))
@@ -572,11 +605,11 @@ for demo_col in categorical_cols:
     }
     
     if cramers_v > 0.50:
-        flag = "⚠️ STRONG association — clusters may be trivially demographic"
+        flag = "STRONG association — clusters may be trivially demographic"
     elif cramers_v > 0.30:
-        flag = "⚠️ Moderate association"
+        flag = "Moderate association"
     else:
-        flag = "✅ Weak association"
+        flag = "Weak association"
     
     print(f"  {demo_col}: Cramér's V={cramers_v:.3f}, χ²={chi2:.1f}, p={p:.4f} {flag}")
 
@@ -586,7 +619,7 @@ print("Clusters become concerning only if they PERFECTLY replicate a single demo
 
 ### 9b. Gamma Impact Audit (Cross-Gamma Comparison)
 
-**Recommendation 2.8:** Diagnose whether demographic association is driven by gamma choice. Run K-Prototypes at γ = {0.5, 1.0, 2.0} (or user-specified range) and compare Cramér's V trends. If V increases monotonically with gamma, the categorical variables are being over-weighted by gamma itself—not because of true behavioral-demographic segmentation.
+**Recommendation:** Diagnose whether demographic association is driven by gamma choice. Run K-Prototypes at γ = {0.5, 1.0, 2.0} (or user-specified range) and compare Cramér's V trends. If V increases monotonically with gamma, the categorical variables are being over-weighted by gamma itself, not because of true behavioral-demographic segmentation.
 
 ```python
 print("\n" + "=" * 70)
@@ -613,7 +646,7 @@ for test_gamma in gamma_test_values:
         gamma=test_gamma
     )
     test_labels = kp_test.fit_predict(df_complete[categorical_cols + numeric_cols],
-                                      categorical_cols=list(range(len(categorical_cols))))
+                                      categorical=categorical_indices)
     df_complete[f'Cluster_KProto_gamma{test_gamma}'] = test_labels
     
     gamma_audit_results[test_gamma] = {}
@@ -648,23 +681,23 @@ for demo_col in categorical_cols:
     monotonic_dec = all(v_values[i] >= v_values[i+1] for i in range(len(v_values)-1))
     
     if monotonic_inc and v_values[-1] > v_values[0] * 1.1:  # >10% increase
-        print(f"⚠️  {demo_col}: V increases monotonically ({v_values[0]:.3f} → {v_values[-1]:.3f})")
+        print(f"{demo_col}: V increases monotonically ({v_values[0]:.3f} → {v_values[-1]:.3f})")
         print(f"    → Gamma is over-weighting categorical variables.")
         gamma_confound_flag = True
     elif monotonic_dec and v_values[-1] < v_values[0] * 0.9:  # >10% decrease
-        print(f"✅ {demo_col}: V decreases with gamma (expected pattern)")
+        print(f"{demo_col}: V decreases with gamma (expected pattern)")
     else:
         print(f"✓  {demo_col}: No monotonic trend (V stable or mixed)")
 
 if gamma_confound_flag:
-    print("\n🚨 GAMMA CONFOUND DETECTED:")
+    print("\n GAMMA CONFOUND DETECTED:")
     print("   The selected gamma may be artificially amplifying demographic associations.")
     print("   Consider:")
     print("   1. Lowering gamma (currently {:.1f}) to reduce categorical over-weighting".format(gamma))
     print("   2. Excluding high-V demographics from clustering inputs")
     print("   3. Investigating whether demographic variables should be used at all")
 else:
-    print("\n✅ GAMMA STABLE: Demographic associations are not gamma-confounded.")
+    print("\n GAMMA STABLE: Demographic associations are not gamma-confounded.")
     print("   Current gamma={:.1f} is appropriate for this data.".format(gamma))
 
 # Store gamma audit in reflection
@@ -689,21 +722,21 @@ strongest_demo = max(bias_audit_single.items(), key=lambda x: x[1]['cramers_v'])
 print(f"  Strongest demographic association: {strongest_demo[0]}, V={strongest_demo[1]['cramers_v']:.3f}")
 
 if strongest_demo[1]['cramers_v'] > 0.50:
-    print("  ⚠️  STRONG: Clusters may be trivially demographic.")
+    print("  STRONG: Clusters may be trivially demographic.")
     print("  Action: Review centroid profiles for pseudo-segmentation.")
 elif strongest_demo[1]['cramers_v'] > 0.30:
-    print("  ⚠️  MODERATE: Some demographic replication, but behavioral variation likely present.")
+    print("  MODERATE: Some demographic replication, but behavioral variation likely present.")
     print("  Action: Compare to LPA results (Psychometrician will do this).")
 else:
-    print("  ✅ WEAK: Clusters capture behavioral variation beyond demographics.")
+    print("  WEAK: Clusters capture behavioral variation beyond demographics.")
     print("  Action: Proceed with confidence to next phase.")
 
 print("\nGamma Audit Finding:")
 if gamma_confound_flag:
-    print("  ⚠️  Gamma confound detected → Demographic associations may be gamma-driven.")
+    print("  Gamma confound detected → Demographic associations may be gamma-driven.")
     print("  Recommendation: Lower gamma or exclude problematic demographics before re-running.")
 else:
-    print("  ✅ No gamma confound → Demographic associations reflect true structure.")
+    print("  No gamma confound → Demographic associations reflect true structure.")
     print("  Confidence in current solution is appropriate.")
 ```
 
@@ -737,6 +770,94 @@ with open(f'{output_dir}/kprototypes_centroids.json', 'w') as f:
 
 # 3. Cost curve
 results_df.to_csv(f'{output_dir}/kprototypes_cost_curve.csv', index=False)
+
+# 4. Bias audit report (markdown)
+os.makedirs(f'{output_dir}/audit_reports', exist_ok=True)
+
+bias_audit_md = f"""# K-Prototypes Bias Audit Report
+
+## Single-Gamma Bias Assessment (γ={gamma:.3f})
+
+For each demographic variable, we compute Cramér's V to assess whether clusters
+trivially replicate demographic structure.
+
+### Findings by Demographic Variable
+
+"""
+
+for demo_col in sorted(categorical_cols):
+    v = bias_audit_single[demo_col]['cramers_v']
+    chi2 = bias_audit_single[demo_col]['chi2']
+    p = bias_audit_single[demo_col]['p_value']
+    
+    if v > 0.50:
+        interpretation = "**STRONG** — Clusters may trivially replicate this demographic."
+    elif v > 0.30:
+        interpretation = "**MODERATE** — Some demographic replication present."
+    else:
+        interpretation = "**WEAK** — Clusters capture behavioral variation beyond this demographic."
+    
+    bias_audit_md += f"""
+#### {demo_col}
+- Cramér's V: {v:.4f}
+- χ²: {chi2:.2f}, p={p:.4f}
+- Interpretation: {interpretation}
+
+"""
+
+# Gamma impact section (if gamma audit was performed)
+if 'gamma_audit_summary' in locals() and gamma_audit_summary:
+    bias_audit_md += """
+## Gamma Impact Audit (Cross-Gamma Comparison)
+
+Testing whether demographic associations are artifacts of gamma choice:
+
+### Cramér's V by Gamma Value
+
+"""
+    
+    for test_gamma in sorted(gamma_audit_summary['test_gammas']):
+        bias_audit_md += f"\n**γ = {test_gamma}:**\n"
+        for demo_col in sorted(categorical_cols):
+            v = gamma_audit_summary['cramers_v_by_gamma'][test_gamma][demo_col]
+            bias_audit_md += f"  - {demo_col}: V={v:.4f}\n"
+    
+    if gamma_audit_summary['confound_detected']:
+        bias_audit_md += """
+### Confound Detection: POSITIVE
+Demographic associations increase monotonically with gamma.
+This suggests gamma is artificially amplifying categorical distance weights.
+
+**Recommendation:** Consider lowering gamma or excluding high-V demographics from clustering.
+"""
+    else:
+        bias_audit_md += """
+### Confound Detection: NEGATIVE
+Demographic associations do not show monotonic gamma dependence.
+This suggests demographic structure is intrinsic to the data, not gamma-driven.
+
+**Recommendation:** Current gamma choice is appropriate.
+"""
+
+bias_audit_md += f"""
+## Summary
+
+**Strongest Demographic Association:** {strongest_demo[0]}, Cramér's V = {strongest_demo[1]['cramers_v']:.4f}
+
+**Overall Assessment:**
+"""
+
+if strongest_demo[1]['cramers_v'] > 0.50:
+    bias_audit_md += "Clusters show strong demographic replication. Review centroid profiles for pseudo-segmentation risk."
+elif strongest_demo[1]['cramers_v'] > 0.30:
+    bias_audit_md += "Clusters show moderate demographic association. Behavioral variation likely present; compare to LPA for validation."
+else:
+    bias_audit_md += "Clusters capture behavioral variation beyond demographics. Low pseudo-segmentation risk."
+
+with open(f'{output_dir}/audit_reports/kprototypes_bias_audit.md', 'w') as f:
+    f.write(bias_audit_md)
+
+print(f"\n✓ Bias audit saved to audit_reports/kprototypes_bias_audit.md")
 ```
 
 ### 10b. Reflection Log
@@ -794,7 +915,7 @@ with open(f'{output_dir}/reflection_logs/kprototypes_agent_reflection.json', 'w'
 
 ### 10c. Pipeline Routing
 
-The K-Prototypes agent's outputs feed into the validation pipeline. Silhouette, outlier, ARI, and consistency analysis happen downstream in the **Psychometrician Agent**. When routing K-Proto labels to the Psychometrician for cross-method ARI, also pass the LPA ambiguity rate from the LPA Agent. Flag to the IO Psychologist if ARI is below 0.40 AND LPA ambiguity rate exceeds 20% — in this case, low ARI may reflect classification uncertainty rather than genuine method disagreement.
+The K-Prototypes agent's outputs feed into the validation pipeline. Silhouette, outlier, ARI, and consistency analysis happen downstream in the **Psychometrician Agent**. When routing K-Prototypes labels to the Psychometrician for cross-method ARI, also pass the LPA ambiguity rate from the LPA Agent. Flag to the I-O Psychologist if ARI is below 0.40 AND LPA ambiguity rate exceeds 20% — in this case, low ARI may reflect classification uncertainty rather than genuine method disagreement.
 
 | Artifact | Recipient | Purpose |
 |----------|-----------|---------|

@@ -1019,6 +1019,7 @@ If the model fails to converge:
 
 ## References
 
+- Cao, Fuyuan & Liang, Jiye & Bai, Liang. (2009). A new initialization method for categorical data clustering. Expert Syst. Appl. 36. 10223-10228. 10.1016/j.eswa.2009.01.060. 
 - Huang, Z. (1998). Extensions to the k-means algorithm for clustering large data sets with categorical values. *Data Mining and Knowledge Discovery, 2*(3), 283–304.
 - Wang, H., & Mi, J. (2025). Intuitive-K-prototypes: A mixed data clustering algorithm with intuitionistic distribution centroid. *Pattern Recognition, 158*, 111062.
 - Madhuri, R., Murty, M. R., Murthy, J. V. R., Reddy, P. V. G. D. P., & Satapathy, S. C. (2014). Cluster analysis on different data sets using K-Modes and K-Prototype algorithms. In *ICT and Critical Infrastructure: Proceedings of the 48th Annual Convention of CSI* (Vol. 2, pp. 137–144). Springer.

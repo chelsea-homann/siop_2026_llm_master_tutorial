@@ -223,6 +223,11 @@ print(f"  Chunks with unknown section: {missing_section} ({missing_section/len(c
 Convert every chunk into a dense vector for similarity search:
 
 ```python
+import os
+os.environ['HF_ENDPOINT'] = 'https://huggingface.co'
+
+
+from transformers import AutoModel
 from sentence_transformers import SentenceTransformer
 import numpy as np
 

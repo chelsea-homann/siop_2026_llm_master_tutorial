@@ -83,7 +83,9 @@ def _chunk_text(text, chunk_size=500, overlap=100):
         chunk = text[start:end].strip()
         if chunk:
             chunks.append(chunk)
-        start = end - overlap
+        # Guarantee forward progress: if the separator fell inside the overlap
+        # window (end - overlap <= start), we'd loop on the same position forever.
+        start = max(start + 1, end - overlap)
         if start < 0:
             break
     return chunks

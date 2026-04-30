@@ -20,7 +20,7 @@ Traditional qualitative methods produce rich, valid personas, but they cannot sc
 
 ## The Approach
 
-The pipeline has four phases, each followed by a human decision gate where the I-O psychologist reviews results before anything moves forward. Nine specialized AI agents handle distinct analytical tasks. The agents do the computation. You make the judgments.
+The pipeline has four phases, each followed by a human decision gate where the I-O psychologist reviews results before anything moves forward. Nine specialized roles handle distinct analytical tasks. The pipeline does the computation. You make the judgments.
 
 ![Pipeline Architecture](resources/pipeline_diagram.png)
 
@@ -45,23 +45,23 @@ The **Psychometrician** then validates both solutions. Silhouette scores (Rousse
 
 Clusters are statistical abstractions. To become useful personas, they must be grounded in organizational context.
 
-The **RAG Agent** builds a searchable knowledge base from organizational documents (policy memos, restructuring announcements, benefits updates, team charters) and retrieves passages relevant to each construct. The **Emergence Agent** scans cluster profiles for patterns outside the 12 codebook constructs, classifying each candidate as NEW, VARIANT, or NOISE (Glaser & Strauss, 2017; Braun & Clarke, 2006).
+The **RAG** component builds a searchable knowledge base from organizational documents (policy memos, restructuring announcements, benefits updates, team charters) and retrieves passages relevant to each construct. The **Emergence** component scans cluster profiles for patterns outside the 12 codebook constructs, classifying each candidate as NEW, VARIANT, or NOISE (Glaser & Strauss, 2017; Braun & Clarke, 2006).
 
 **Gate 3:** You review the emergent theme report. Should any new themes be added to the codebook?
 
 ### Phase 4: Write and Validate Personas
 
-The **Narrator Agent** synthesizes cluster profiles, psychological fingerprints, and policy context into evidence-grounded persona narratives. Every claim must trace to centroid values or retrieved passages. The epistemic risk mitigation protocol (Nguyen & Welch, 2025) prevents anthropomorphic interpretation, fabricated quotations, and the Oracle Effect.
+The **Narrator** synthesizes cluster profiles, psychological fingerprints, and policy context into evidence-grounded persona narratives. Every claim must trace to centroid values or retrieved passages. The epistemic risk mitigation protocol (Nguyen & Welch, 2025) prevents anthropomorphic interpretation, fabricated quotations, and the Oracle Effect.
 
 **Gate 4:** You approve the personas for leadership presentation. Would an employee be comfortable if they recognized their group?
 
 ### Longitudinal Mode (Bonus)
 
-When a follow-up survey arrives, the **Continuity Agent** maps new respondents to baseline groups and flags weak-fit individuals. The **Emergence Agent** (longitudinal mode) tests whether weak-fit respondents form a genuinely new segment.
+When a follow-up survey arrives, the **Continuity** component maps new respondents to baseline groups and flags weak-fit individuals. The **Emergence** component (longitudinal mode) tests whether weak-fit respondents form a genuinely new segment.
 
 ### The Project Manager
 
-The **Project Manager Agent** runs as an ambient governance layer across all phases, logging every agent action into a cumulative audit trail.
+The **Project Manager** runs as an ambient governance layer across all phases, logging every action into a cumulative audit trail.
 
 ---
 
@@ -111,13 +111,12 @@ The full codebook with operational definitions, exemplars, and non-examples is i
 
 ## The AI Foundations
 
-If you are new to LLMs, RAG, embeddings, or AI agents, the `resources/ai_foundations/` directory provides background reading:
+If you are new to LLMs, RAG, or embeddings, the `resources/ai_foundations/` directory provides background reading:
 
 | Document | What It Covers | When You Need It |
 |----------|---------------|-----------------|
 | [`key_concepts.md`](resources/ai_foundations/key_concepts.md) | Embeddings, RAG, tokens, prompts | Before Phase 3 (RAG grounding) |
 | [`ai_models_explained.md`](resources/ai_foundations/ai_models_explained.md) | How LLMs generate text, model selection | Before Phases 3-4 (LLM classification and narrative generation) |
-| [`agents_in_research.md`](resources/ai_foundations/agents_in_research.md) | The multi-agent architecture pattern | Anytime -- context for the pipeline design |
 | [`install_and_access.md`](resources/ai_foundations/install_and_access.md) | API keys, environment setup | During setup |
 
 These are reference documents, not prerequisites. The tutorial notebook explains what you need to know as you go.
@@ -162,16 +161,16 @@ siop_2026_llm_master_tutorial/
 ├── SETUP.md                       # Environment setup instructions
 ├── verify_setup.py                # Installation verification
 │
-├── agents/                        # Agent specifications (SKILL.md files)
-│   ├── data-steward-agent/
-│   ├── k-prototypes-agent/
-│   ├── lpa-agent/
-│   ├── psychometrician-agent/
-│   ├── rag-agent/
-│   ├── narrator-agent/
-│   ├── continuity-agent/
-│   ├── emergence-agent/
-│   └── project-manager-agent/
+├── boundaries/                    # Role boundary specifications (SKILL.md files)
+│   ├── data-steward-boundaries/
+│   ├── k-prototypes-boundaries/
+│   ├── lpa-boundaries/
+│   ├── psychometrician-boundaries/
+│   ├── rag-boundaries/
+│   ├── narrator-boundaries/
+│   ├── continuity-boundaries/
+│   ├── emergence-boundaries/
+│   └── project-manager-boundaries/
 │
 ├── synthetic_data/                # Synthetic survey data + org documents
 │   ├── survey_baseline.csv        # Baseline survey (N=10,000)
@@ -202,7 +201,7 @@ siop_2026_llm_master_tutorial/
 └── resources/                     # Reference documents
     ├── io_codebook.md             # I-O Psychology construct codebook
     ├── ethics_checklist.md        # Responsible persona practice checklist
-    └── ai_foundations/            # Background reading on LLMs, RAG, agents
+    └── ai_foundations/            # Background reading on LLMs, RAG, embeddings
 ```
 
 ---
@@ -216,8 +215,8 @@ This tutorial extends work presented at SIOP 2025: *Leveraging LLMs for Employee
 - Mixed-type clustering (K-Prototypes + LPA) to discover workforce segments
 - A formal codebook of 12 validated I-O constructs with operational definitions and exemplars
 - RAG grounding persona narratives in actual organizational documents
-- Longitudinal tracking via Continuity and Emergence agents
-- Multi-agent governance with data lineage, quality gates, and human decision authority
+- Longitudinal tracking via Continuity and Emergence components
+- Pipeline governance with data lineage, quality gates, and human decision authority
 - Persona narrative synthesis with epistemic risk mitigation
 - Reviewable outputs in three formats (.md reports, .csv data, .json raw)
 

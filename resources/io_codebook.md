@@ -22,14 +22,14 @@ The codebook serves three primary roles:
 
 ### Relationship Between Survey Items and Codebook Constructs
 
-The tutorial dataset includes five Likert-scale survey items: **Cared_About**, **Excited**, **Helpful_Info**, **Trust_Leaders**, and **Morale**. These five items are a simplified proxy designed for tutorial purposes. They do not directly measure any single construct in this codebook with the precision of a validated multi-item scale.
+The tutorial dataset includes five Likert-scale survey items: **Cared_About**, **Excited**, **Helpful_Info**, **Trust_Leadership**, and **Morale**. These five items are a simplified proxy designed for tutorial purposes. They do not directly measure any single construct in this codebook with the precision of a validated multi-item scale.
 
 Instead, each survey item serves as a **partial indicator** that loads onto multiple constructs. For example:
 
 - **Cared_About** partially reflects Perceived Organizational Support (POS) and Psychological Safety (PSY-SAF)
 - **Excited** partially reflects Work Engagement (WRK-ENG) and Change Readiness (CHG-RDY)
 - **Helpful_Info** partially reflects Communication Effectiveness (COMM-EFF) and Procedural Justice (JUST-PRO)
-- **Trust_Leaders** partially reflects Trust in Leadership (TRUST-LDR) and Leader-Member Exchange (LMX)
+- **Trust_Leadership** partially reflects Trust in Leadership (TRUST-LDR) and Leader-Member Exchange (LMX)
 - **Morale** partially reflects Organizational Commitment (ORG-COM) and Work-Life Balance (WLB)
 
 In a full-scale implementation, each construct would be measured by its own validated multi-item scale (noted in each construct entry below). The five-item tutorial survey demonstrates the pipeline mechanics; the codebook demonstrates the construct precision that a production deployment would require.
@@ -52,7 +52,7 @@ Edmondson (1999) developed the construct through qualitative and quantitative re
 
 **Survey Item Mapping:**
 - **Primary proxy:** Cared_About (feeling valued by the organization reduces perceived interpersonal risk)
-- **Secondary proxy:** Trust_Leaders (trust in leadership contributes to a climate where speaking up feels safe)
+- **Secondary proxy:** Trust_Leadership (trust in leadership contributes to a climate where speaking up feels safe)
 - **Full-scale measurement:** Edmondson's (1999) 7-item Psychological Safety Scale (e.g., "If you make a mistake on this team, it is often held against you" [reverse-scored]; "Members of this team are able to bring up problems and tough issues")
 
 **Behavioral Exemplars During Disruption:**
@@ -176,7 +176,7 @@ Rizzo et al. (1970) developed role ambiguity within role theory, drawing on Kahn
 
 **Survey Item Mapping:**
 - **Primary proxy:** Helpful_Info (receiving helpful information about one's role reduces ambiguity; low scores suggest information gaps)
-- **Secondary proxy:** Trust_Leaders (employees who trust leadership are more likely to seek and receive role clarification)
+- **Secondary proxy:** Trust_Leadership (employees who trust leadership are more likely to seek and receive role clarification)
 - **Full-scale measurement:** Rizzo, House, and Lirtzman's (1970) 6-item Role Ambiguity Scale (e.g., "I know exactly what is expected of me" [reverse-scored]; "I know what my responsibilities are" [reverse-scored]). Note: items are typically reverse-scored so that higher scores indicate greater ambiguity.
 
 **Behavioral Exemplars During Disruption:**
@@ -206,7 +206,7 @@ Leader-member exchange describes the quality of the dyadic relationship between 
 Graen and Uhl-Bien (1995) codified LMX theory, which evolved from Vertical Dyad Linkage theory (Dansereau, Graen, & Haga, 1975). Meta-analytic evidence (Gerstner & Day, 1997; Martin, Guillaume, Thomas, Lee, & Epitropaki, 2016) demonstrates that LMX quality predicts job satisfaction, organizational commitment, job performance, and turnover intentions. The dyadic nature of LMX distinguishes it from general leadership climate measures: two employees in the same team can have very different LMX relationships with the same leader.
 
 **Survey Item Mapping:**
-- **Primary proxy:** Trust_Leaders (trust is a core component of high-quality LMX)
+- **Primary proxy:** Trust_Leadership (trust is a core component of high-quality LMX)
 - **Secondary proxy:** Cared_About (feeling cared about by one's direct leader reflects the affective dimension of LMX)
 - **Full-scale measurement:** Graen and Uhl-Bien's (1995) LMX-7 Scale (e.g., "How well does your leader understand your job problems and needs?"; "How would you characterize your working relationship with your leader?")
 
@@ -238,7 +238,7 @@ Colquitt (2001) validated a four-dimensional model of organizational justice, de
 
 **Survey Item Mapping:**
 - **Primary proxy:** Helpful_Info (access to transparent, accurate information is a core procedural justice criterion)
-- **Secondary proxy:** Trust_Leaders (procedural justice judgments drive trust; employees who perceive fair processes trust the decision-makers)
+- **Secondary proxy:** Trust_Leadership (procedural justice judgments drive trust; employees who perceive fair processes trust the decision-makers)
 - **Full-scale measurement:** Colquitt's (2001) Procedural Justice Scale, a 7-item measure (e.g., "Have you been able to express your views and feelings during those procedures?"; "Have those procedures been applied consistently?")
 
 **Behavioral Exemplars During Disruption:**
@@ -268,7 +268,7 @@ Trust in leadership is the willingness of a party to be vulnerable to the action
 Mayer et al. (1995) proposed the integrative model of organizational trust, identifying ability, benevolence, and integrity as the three antecedents of trust. Their model distinguishes trust (a willingness to be vulnerable) from trustworthiness (the characteristics that make one worthy of trust). Dirks and Ferrin (2002) meta-analytically confirmed that trust in leadership predicts job satisfaction, organizational commitment, and organizational citizenship behavior, with trust in direct leaders showing stronger effects on performance and trust in organizational leaders showing stronger effects on commitment.
 
 **Survey Item Mapping:**
-- **Primary proxy:** Trust_Leaders (this item directly taps trust in leadership)
+- **Primary proxy:** Trust_Leadership (this item directly taps trust in leadership)
 - **Secondary proxy:** Morale (trust in leadership sustains morale during uncertainty; their erosion tends to co-occur)
 - **Full-scale measurement:** Mayer and Davis's (1999) Organizational Trust Inventory, with separate subscales for ability, benevolence, and integrity; or the short form by Schoorman, Mayer, and Davis (2007)
 
@@ -331,7 +331,7 @@ Bordia et al. (2004) demonstrated that quality of change communication predicts 
 
 **Survey Item Mapping:**
 - **Primary proxy:** Helpful_Info (receiving helpful information is the direct behavioral indicator of effective communication)
-- **Secondary proxy:** Trust_Leaders (effective communication builds trust; its absence erodes trust through information vacuums)
+- **Secondary proxy:** Trust_Leadership (effective communication builds trust; its absence erodes trust through information vacuums)
 - **Full-scale measurement:** Bordia et al.'s (2004) change communication quality measures, or Miller, Johnson, and Grau's (1994) 5-item communication satisfaction subscale adapted for change contexts
 
 **Behavioral Exemplars During Disruption:**

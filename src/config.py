@@ -1,10 +1,9 @@
 """
 Pipeline configuration for the SIOP 2026 tutorial.
 
-Controls mock mode, model selection, file paths, and analysis
-thresholds. Mock mode is automatically enabled when no
-ANTHROPIC_API_KEY environment variable is set, allowing the
-full pipeline to run without API access.
+Controls model selection, file paths, and analysis thresholds.
+An ANTHROPIC_API_KEY environment variable must be set to run
+the pipeline.
 
 Thresholds are drawn from the Project Manager Agent's Global
 Configuration Registry and grounded in published I-O psychology
@@ -13,18 +12,12 @@ best practices.
 
 import os
 
-# ---------------------------------------------------------------------------
-# Mock mode: use pre-generated outputs instead of live API calls.
-# Automatically enabled when ANTHROPIC_API_KEY is absent.
-# ---------------------------------------------------------------------------
-MOCK_MODE = os.environ.get("ANTHROPIC_API_KEY") is None
-
 PIPELINE_VERSION = "0.2.0"
 
 # ---------------------------------------------------------------------------
 # LLM settings
 # ---------------------------------------------------------------------------
-MODEL = "claude-sonnet-4-20250514"
+MODEL = "claude-sonnet-4-6"
 MAX_TOKENS = 4096
 
 # ---------------------------------------------------------------------------
@@ -38,7 +31,6 @@ SEED = 42
 DATA_DIR = "synthetic_data"
 ORG_DOCS_DIR = "synthetic_data/org_documents"
 OUTPUT_DIR = "outputs"
-MOCK_OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "mock_outputs")
 
 # ---------------------------------------------------------------------------
 # Quality-gate thresholds (Project Manager Global Configuration Registry)

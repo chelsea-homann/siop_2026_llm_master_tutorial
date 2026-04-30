@@ -28,7 +28,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
 from src import config
-from src.utils import audit_entry, call_llm, load_mock
+from src.utils import audit_entry, call_llm
 
 
 # ── Private helpers ──────────────────────────────────────────────────────
@@ -199,9 +199,7 @@ def query_knowledge_base(kb, query, top_k=3):
 def ground_constructs(kb, codebook=None):
     """Map each codebook construct to its most relevant policy passages.
 
-    In live mode the LLM synthesises relevance judgements; in mock
-    mode, pre-generated mappings are loaded from
-    ``rag_output.json``.
+    The LLM synthesises relevance judgements for each retrieved passage.
 
     Parameters
     ----------
@@ -214,32 +212,15 @@ def ground_constructs(kb, codebook=None):
     -------
     dict
         Keys: ``mappings`` (construct -> list of passage dicts),
-        ``audit_entries``.
+        ``reasoning``, ``audit_entries``.
     """
     codebook = codebook or list(config.NUMERIC_COLS)
     audit = []
-
-    if config.MOCK_MODE:
-        mappings = load_mock("rag_output.json")
-        audit.append(
-            audit_entry(
-                "Ground", "RAG", "Construct grounding (mock)",
-                {"constructs": codebook},
-            )
-        )
-        reasoning = (
-            f"Built knowledge base from {kb['n_documents']} organizational "
-            f"documents ({kb['n_chunks']} text chunks). "
-            f"Grounded {len(codebook)} codebook constructs against the corpus "
-            f"(mock mode: pre-generated relevance assessments)."
-        )
-        return {"mappings": mappings, "reasoning": reasoning, "audit_entries": audit}
 
     mappings = {}
     for construct in codebook:
         passages = query_knowledge_base(kb, construct, top_k=3)
         if passages:
-            # Use LLM to assess relevance
             passage_texts = "\n---\n".join(
                 [f"[{p['source']}] {p['text']}" for p in passages]
             )
@@ -250,11 +231,10 @@ def ground_constructs(kb, codebook=None):
                 f"{passage_texts}"
             )
             system = (
-                "You are an I-O psychologist with knowledge of grounding survey constructs in "
-                "organisational policy documents. Be concise."
+                "You are an I-O psychologist grounding survey constructs in "
+                "organisational policy documents. Be concise and specific."
             )
             llm_response = call_llm(prompt, system=system)
-
             mappings[construct] = {
                 "passages": passages,
                 "llm_assessment": llm_response,
@@ -262,31 +242,36 @@ def ground_constructs(kb, codebook=None):
         else:
             mappings[construct] = {"passages": [], "llm_assessment": "No relevant passages found."}
 
+    n_with = sum(1 for m in mappings.values() if isinstance(m, dict) and m.get("passages"))
+
     audit.append(
         audit_entry(
-            "Ground", "RAG", "Construct grounding (live)",
-            {"constructs": codebook, "n_with_passages": sum(1 for m in mappings.values() if m["passages"])},
+            "Ground", "RAG", "Construct grounding",
+            {"constructs": codebook, "n_with_passages": n_with},
         )
     )
 
-    # ── Build reasoning narrative ──────────────────────────────────
-    n_with = sum(1 for m in mappings.values() if isinstance(m, dict) and m.get("passages"))
-    reasoning_parts = [
-        f"Built knowledge base from {kb['n_documents']} organizational "
-        f"documents ({kb['n_chunks']} text chunks).",
-        f"Grounded {len(codebook)} codebook constructs against the "
-        f"organizational document corpus using live LLM relevance assessment.",
-        f"{n_with} of {len(codebook)} constructs found relevant policy "
-        f"passages.",
-    ]
+    # ── LLM reasoning summary ──────────────────────────────────────
     ungrounded = [c for c in codebook
                   if isinstance(mappings.get(c), dict)
                   and not mappings[c].get("passages")]
-    if ungrounded:
-        reasoning_parts.append(
-            f"Constructs without grounding: {', '.join(ungrounded)}. "
-            f"These may lack representation in the current document corpus."
-        )
-    reasoning = " ".join(reasoning_parts)
+    grounded_summaries = "\n".join(
+        f"  {c}: {len(mappings[c]['passages'])} passage(s) retrieved"
+        for c in codebook
+    )
+    system_r = (
+        "You are the RAG agent for an I-O psychology pipeline. Summarize the "
+        "construct grounding results in 2-3 sentences. Note which constructs "
+        "are well-grounded and flag any gaps for the practitioner."
+    )
+    prompt_r = (
+        f"Knowledge base: {kb['n_documents']} documents, {kb['n_chunks']} chunks.\n"
+        f"Codebook constructs grounded: {len(codebook)}\n"
+        f"Results:\n{grounded_summaries}\n"
+        + (f"Ungrounded constructs: {', '.join(ungrounded)}\n" if ungrounded else "")
+        + "\nIn 2-3 sentences: summarize the grounding coverage and flag any "
+        "constructs that lack policy support for the practitioner's review."
+    )
+    reasoning = call_llm(prompt_r, system=system_r)
 
     return {"mappings": mappings, "reasoning": reasoning, "audit_entries": audit}

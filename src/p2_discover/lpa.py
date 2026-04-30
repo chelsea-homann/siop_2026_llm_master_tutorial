@@ -32,7 +32,7 @@ from scipy.stats import zscore
 from sklearn.mixture import GaussianMixture
 
 from src import config
-from src.utils import audit_entry
+from src.utils import audit_entry, call_llm
 
 
 # ── Private helpers ──────────────────────────────────────────────────────
@@ -278,7 +278,7 @@ def run_lpa(df, indicator_cols=None, k_range=None):
         },
     }
 
-    # ── Build reasoning narrative ──────────────────────────────────
+    # ── Build reasoning via LLM ────────────────────────────────────
     entropy_val = float(best_row["entropy"])
     entropy_quality = (
         "excellent" if entropy_val > 0.80 else
@@ -289,27 +289,35 @@ def run_lpa(df, indicator_cols=None, k_range=None):
     ambig_pct = round(ambiguous_count / max(len(df_complete), 1) * 100, 1)
     n_models_tested = len(results)
     n_converged = len(valid)
-    reasoning_parts = [
-        f"Latent Profile Analysis via Gaussian Mixture Models on "
-        f"{len(indicator_cols)} continuous indicators.",
-        f"Tested {n_models_tested} models ({n_converged} converged) across "
-        f"K={list(k_range)[0]}-{list(k_range)[-1]} with diagonal and full "
-        f"covariance structures.",
-        rationale,
-        f"Entropy: {entropy_val:.3f} ({entropy_quality} classification "
-        f"certainty; Muthen convention: 1.0 = perfect, < 0.60 = substantial "
-        f"overlap between profiles).",
+
+    fp_lines = []
+    for pid, fp in fingerprints.items():
+        dims_str = ", ".join(f"{d}: {v}" for d, v in fp["dims"].items())
+        fp_lines.append(f"  Profile {pid} ({fp['label']}): {dims_str}")
+
+    system = (
+        "You are the LPA agent, a Latent Profile Analysis specialist for I-O "
+        "psychology research (Spurk et al., 2020; Nylund et al., 2007). Provide "
+        "expert commentary on the model selection and psychological fingerprints "
+        "in 3-5 sentences. Evaluate entropy, interpret each profile, assess the "
+        "ambiguity rate, and give a verdict for the I-O psychologist's Gate 2 decision."
+    )
+    prompt = (
+        f"Review this LPA solution ({n} respondents, {len(indicator_cols)} indicators):\n\n"
+        f"Models tested: {n_models_tested} ({n_converged} converged) across "
+        f"K={list(k_range)[0]}-{list(k_range)[-1]} with diagonal and full covariance.\n"
+        f"Selected: K={optimal_k}, {optimal_cov} covariance  |  BIC: {float(best_row['BIC']):.1f}\n"
+        f"Selection rationale: {rationale}\n"
+        f"Entropy: {entropy_val:.3f} ({entropy_quality}; 1.0 = perfect, <0.60 = substantial overlap)\n"
         f"Ambiguous respondents (posterior < {config.LPA_AMBIGUITY_POSTERIOR}): "
-        f"{ambiguous_count} ({ambig_pct}%). These individuals do not clearly "
-        f"belong to a single profile.",
-    ]
-    if ambig_pct > 15:
-        reasoning_parts.append(
-            "The ambiguity rate is elevated. Consider whether the profiles "
-            "are sufficiently distinct or whether additional indicators "
-            "would improve classification."
-        )
-    reasoning = " ".join(reasoning_parts)
+        f"{ambiguous_count} ({ambig_pct}%)\n"
+        f"\nPsychological fingerprints:\n"
+        + "\n".join(fp_lines)
+        + "\n\nIn 3-5 sentences: justify model selection using BIC and entropy, "
+        "interpret each fingerprint in I-O psychology terms, assess the ambiguity "
+        "rate, and give your verdict for Gate 2."
+    )
+    reasoning = call_llm(prompt, system=system)
 
     return {
         "labels": labels,

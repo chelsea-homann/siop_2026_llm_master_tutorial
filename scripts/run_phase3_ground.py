@@ -50,7 +50,7 @@ TIMESTAMP = datetime.now(timezone.utc).isoformat()
 def _render_report(summary: dict) -> str:
     rag = summary["rag"]
     em = summary["emergence"]
-    mode = "MOCK" if summary["mock_mode"] else "LIVE"
+    mode = "LIVE"
 
     n_with = sum(
         1 for v in rag["mappings"].values()
@@ -224,7 +224,7 @@ def _render_retrieval_detail(mappings: dict) -> str:
 def _render_success_report(summary: dict) -> str:
     rag = summary["rag"]
     em = summary["emergence"]
-    mode = "MOCK" if summary["mock_mode"] else "LIVE"
+    mode = "LIVE"
     n_with = sum(
         1 for v in rag["mappings"].values()
         if isinstance(v, dict) and v.get("passages")
@@ -264,9 +264,8 @@ def _render_success_report(summary: dict) -> str:
         "dense-embedding production pattern). Emergence classification follows "
         "Braun & Clarke (2006) thematic analysis: NEW themes warrant codebook "
         "addition, VARIANT themes warrant sub-labels, NOISE themes are "
-        "statistical artifacts. In mock mode, LLM relevance ratings and "
-        "theme classifications are pre-generated; in live mode they are "
-        "produced by Claude Sonnet 4."
+        "statistical artifacts. LLM relevance ratings and theme classifications "
+        "are produced live by the Anthropic API."
     )
     status = f"SUCCESS -- Grounding complete ({mode} mode)"
 
@@ -294,7 +293,7 @@ def main() -> int:
     print("=" * 60)
     print(f"Run ID:    {RUN_ID}")
     print(f"Timestamp: {TIMESTAMP}")
-    print(f"LLM mode:  {'MOCK' if config.MOCK_MODE else 'LIVE'}")
+    print("LLM mode:  LIVE")
 
     if not KPROTO_PROFILES.exists():
         print(f"ERROR: Phase 2 profiles not found at {KPROTO_PROFILES}")
@@ -360,7 +359,7 @@ def main() -> int:
     summary = {
         "run_id": RUN_ID,
         "timestamp": TIMESTAMP,
-        "mock_mode": config.MOCK_MODE,
+        "mock_mode": False,
         "rag": {
             "n_documents": kb["n_documents"],
             "n_chunks": kb["n_chunks"],
@@ -391,7 +390,7 @@ def main() -> int:
     print("  PHASE 3 -- SUCCESS REPORT")
     print("=" * 60)
     print(f"Status:              COMPLETE")
-    print(f"LLM mode:            {'MOCK' if config.MOCK_MODE else 'LIVE'}")
+    print("LLM mode:            LIVE")
     print(f"Documents indexed:   {kb['n_documents']}")
     print(f"Constructs grounded: {len(rag_out['mappings'])}")
     print(f"Emergence candidates:{len(em_out['candidates'])}")

@@ -1,12 +1,9 @@
 """
 Shared utilities for the SIOP 2026 tutorial pipeline.
 
-Provides the central LLM calling helper (with automatic mock
-fallback), mock-output loading, display helpers for Jupyter
+Provides the central LLM calling helper, display helpers for Jupyter
 notebooks, and output-persistence functions. Every LLM-dependent
-agent routes its API calls through ``call_llm`` so that a single
-toggle (``config.MOCK_MODE``) switches the entire pipeline between
-live and offline operation.
+agent routes its API calls through ``call_llm``.
 """
 
 import json
@@ -19,15 +16,8 @@ from src import config
 # ── LLM helpers ───────────────────────────────────────────────────────────
 
 
-def call_llm(prompt, system=None, mock_key=None):
-    """Call the Anthropic LLM or return a mock response.
-
-    In mock mode the function loads the pre-generated JSON file
-    identified by *mock_key* (e.g. ``"narrator_output.json"``).
-    In live mode it instantiates the Anthropic client and sends
-    the request.  This indirection keeps every agent module free
-    of direct SDK imports and makes the pipeline runnable without
-    an API key.
+def call_llm(prompt, system=None):
+    """Call the Anthropic LLM and return the response text.
 
     Parameters
     ----------
@@ -36,24 +26,17 @@ def call_llm(prompt, system=None, mock_key=None):
     system : str, optional
         An optional system prompt providing agent identity and
         constraints.
-    mock_key : str, optional
-        Filename inside ``src/mock_outputs/`` to load when mock
-        mode is active.
 
     Returns
     -------
     str
-        The LLM response text (or the loaded mock content).
+        The LLM response text.
     """
-    if config.MOCK_MODE and mock_key:
-        return load_mock(mock_key)
-
-    # Late import so the SDK is only required in live mode.
     try:
-        import anthropic  # noqa: F811
+        import anthropic
     except ImportError:
         raise ImportError(
-            "The 'anthropic' package is required for live LLM calls. "
+            "The 'anthropic' package is required. "
             "Install it with: pip install anthropic"
         )
 
@@ -65,32 +48,6 @@ def call_llm(prompt, system=None, mock_key=None):
         messages=[{"role": "user", "content": prompt}],
     )
     return response.content[0].text
-
-
-# ── Mock-output loading ──────────────────────────────────────────────────
-
-
-def load_mock(filename):
-    """Load a pre-generated mock output from the mock_outputs directory.
-
-    Parameters
-    ----------
-    filename : str
-        Name of the JSON file (e.g. ``"narrator_output.json"``).
-
-    Returns
-    -------
-    dict or list or str
-        The parsed JSON content, or the raw string if the file is
-        not valid JSON.
-    """
-    filepath = os.path.join(config.MOCK_OUTPUT_DIR, filename)
-    with open(filepath, "r", encoding="utf-8") as fh:
-        try:
-            return json.load(fh)
-        except json.JSONDecodeError:
-            fh.seek(0)
-            return fh.read()
 
 
 # ── Display helpers (for Jupyter notebooks) ──────────────────────────────

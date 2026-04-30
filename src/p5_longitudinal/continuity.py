@@ -25,7 +25,7 @@ import pandas as pd
 from scipy.stats import zscore
 
 from src import config
-from src.utils import audit_entry
+from src.utils import audit_entry, call_llm
 
 
 # ── Private helpers ──────────────────────────────────────────────────────
@@ -217,11 +217,44 @@ def align_to_baseline(followup_df, baseline_centroids, cat_cols=None,
             baseline_labels, aligned_labels, k_base,
         )
 
+    # ── Build reasoning via LLM ────────────────────────────────────
+    transition_summary = ""
+    if transition_matrix is not None:
+        rows = []
+        for idx, row in transition_matrix.iterrows():
+            rows.append(
+                f"  Cluster {idx}: baseline {row['Baseline_pct']}% -> "
+                f"followup {row['Followup_pct']}% (change: {row['Change_ppt']:+.1f} ppt)"
+            )
+        transition_summary = "\nCluster-level transitions:\n" + "\n".join(rows)
+
+    system = (
+        "You are the Continuity agent, a longitudinal alignment specialist for "
+        "I-O psychology research (Lu, 2025; Bakac et al., 2022). Provide expert "
+        "commentary on workforce migration patterns in 3-5 sentences. Interpret "
+        "which segments grew or shrank, characterize the weak-fit respondents, "
+        "and flag any patterns warranting immediate attention."
+    )
+    prompt = (
+        f"Review this longitudinal alignment ({len(fu):,} follow-up respondents, "
+        f"{k_base} baseline clusters):\n\n"
+        f"Weak-fit respondents (distance > {config.WEAK_FIT_DISTANCE}): "
+        f"{weak_fit_count} ({pct_weak}%)\n"
+        f"Mean alignment distance: {float(min_distances.mean()):.4f}"
+        f"{transition_summary}\n\n"
+        "In 3-5 sentences: interpret which clusters grew or shrank and what that "
+        "signals about workforce shifts, characterize what the weak-fit pool likely "
+        "represents, and flag any patterns warranting leadership attention before "
+        "the Emergence Agent's K+1 test."
+    )
+    reasoning = call_llm(prompt, system=system)
+
     return {
         "aligned_labels": aligned_labels,
         "weak_fit_mask": weak_fit_mask,
         "transition_matrix": transition_matrix,
         "weak_fit_count": weak_fit_count,
         "distance_matrix": dist_matrix,
+        "reasoning": reasoning,
         "audit_entries": audit,
     }

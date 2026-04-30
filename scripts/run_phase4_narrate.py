@@ -48,9 +48,8 @@ RUN_ID = str(uuid.uuid4())
 TIMESTAMP = datetime.now(timezone.utc).isoformat()
 
 
-def _render_persona_md(personas: list, mock_mode: bool,
+def _render_persona_md(personas: list,
                        has_policy: bool) -> str:
-    mode = "MOCK" if mock_mode else "LIVE"
     lines = [
         "# Phase 4: Write and Validate Personas",
         "",
@@ -60,7 +59,7 @@ def _render_persona_md(personas: list, mock_mode: bool,
         "",
         f"- **Run ID:** `{RUN_ID}`",
         f"- **Timestamp:** {TIMESTAMP}",
-        f"- **LLM mode:** {mode}",
+        f"- **LLM mode:** LIVE",
         f"- **Personas generated:** {len(personas)}",
         f"- **Policy context (RAG grounding):** "
         f"{'attached' if has_policy else 'not attached'}",
@@ -284,16 +283,15 @@ def _render_ethics_checkpoint() -> str:
     return "\n".join(lines)
 
 
-def _render_success_report(personas: list, mock_mode: bool,
+def _render_success_report(personas: list,
                            has_policy: bool,
                            has_fingerprints: bool) -> str:
-    mode = "MOCK" if mock_mode else "LIVE"
     status = (
         f"PENDING GATE 4 -- Ethics checkpoint required "
-        f"({mode} mode, {len(personas)} personas generated)"
+        f"(LIVE mode, {len(personas)} personas generated)"
     )
     metrics = [
-        ("LLM mode", mode),
+        ("LLM mode", "LIVE"),
         ("Personas generated", len(personas)),
         ("Policy context (RAG grounding)", "attached" if has_policy else "not attached"),
         ("LPA fingerprints attached", "yes" if has_fingerprints else "no"),
@@ -375,7 +373,7 @@ def main() -> int:
     print("=" * 60)
     print(f"Run ID:    {RUN_ID}")
     print(f"Timestamp: {TIMESTAMP}")
-    print(f"LLM mode:  {'MOCK' if config.MOCK_MODE else 'LIVE'}")
+    print("LLM mode:  LIVE")
 
     if not KPROTO_PROFILES.exists():
         print(f"ERROR: Phase 2 profiles not found at {KPROTO_PROFILES}")
@@ -424,7 +422,7 @@ def main() -> int:
 
     personas_md = OUT_DIR / "personas.md"
     personas_md.write_text(
-        _render_persona_md(personas, config.MOCK_MODE, bool(policy_context)),
+        _render_persona_md(personas, bool(policy_context)),
         encoding="utf-8",
     )
     print(f"Wrote: {personas_md.relative_to(REPO_ROOT)}")
@@ -442,7 +440,7 @@ def main() -> int:
     success_path = REFLECT_DIR / "phase4_success_report.txt"
     success_path.write_text(
         _render_success_report(
-            personas, mock_mode=config.MOCK_MODE,
+            personas,
             has_policy=bool(policy_context), has_fingerprints=bool(construct_scores),
         ),
         encoding="utf-8",
@@ -454,7 +452,7 @@ def main() -> int:
     print("  PHASE 4 -- SUCCESS REPORT")
     print("=" * 60)
     print(f"Status:              COMPLETE")
-    print(f"LLM mode:            {'MOCK' if config.MOCK_MODE else 'LIVE'}")
+    print("LLM mode:            LIVE")
     print(f"Personas generated:  {len(personas)}")
     print(f"Policy context:      {'yes' if policy_context else 'no'}")
     print(f"LPA fingerprints:    {'yes' if construct_scores else 'no'}")

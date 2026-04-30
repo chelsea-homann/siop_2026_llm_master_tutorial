@@ -26,7 +26,7 @@ from scipy.spatial.distance import cdist
 from sklearn.metrics import adjusted_rand_score, silhouette_score, silhouette_samples
 
 from src import config
-from src.utils import audit_entry
+from src.utils import audit_entry, call_llm
 
 
 # ── Private helpers ──────────────────────────────────────────────────────
@@ -194,37 +194,37 @@ def run_validation(df, labels_kproto, labels_lpa=None, feature_cols=None):
 
     validation_summary = "\n".join(lines)
 
-    # ── Build reasoning narrative ──────────────────────────────────
-    reasoning_parts = [
-        f"Validated cluster solution with {k} groups on {n:,} respondents.",
-        f"Global silhouette coefficient: {sil_overall:.3f} ({quality}). "
-        f"{interpretation}",
-    ]
-    # Per-cluster detail
-    weak_clusters = [
-        c for c, d in sil_per_cluster.items()
-        if d["mean"] < 0.25
-    ]
-    if weak_clusters:
-        reasoning_parts.append(
-            f"Cluster(s) {', '.join(str(c) for c in weak_clusters)} show "
-            f"weak internal cohesion (silhouette < 0.25). Members of these "
-            f"clusters may not be well-differentiated from adjacent groups."
-        )
-    reasoning_parts.append(
-        f"Outliers: {n_outliers} respondents ({n_outliers/n*100:.1f}%) "
-        f"flagged as distant from their cluster centroid (top "
-        f"{config.OUTLIER_PERCENTILE}th percentile). These individuals "
-        f"may represent qualitatively different experiences not captured "
-        f"by the current solution."
+    # ── Build reasoning via LLM ────────────────────────────────────
+    weak_clusters = [c for c, d in sil_per_cluster.items() if d["mean"] < 0.25]
+    per_cluster_lines = "\n".join(
+        f"  Cluster {c}: silhouette={d['mean']:.3f}, "
+        f"pct_negative={d['pct_negative']}%"
+        for c, d in sorted(sil_per_cluster.items())
     )
-    if ari is not None:
-        reasoning_parts.append(
-            f"Cross-method agreement (ARI): {ari:.3f} ({ari_quality}). "
-            f"K-Prototypes and LPA are compared as independent partition solutions "
-            f"over the same respondents. {ari_interp}"
-        )
-    reasoning = " ".join(reasoning_parts)
+
+    system = (
+        "You are the Psychometrician agent, a statistical auditor for cluster "
+        "validation in I-O psychology research (Rousseeuw, 1987; Steinley, 2004; "
+        "Hallgren, 2012). Provide expert commentary on the cluster validation "
+        "results in 3-5 sentences. Interpret silhouette scores, assess cross-method "
+        "agreement, characterize outliers, and give a validation verdict for the "
+        "I-O psychologist's Gate 2 decision."
+    )
+    prompt = (
+        f"Review this cluster validation ({k} clusters, {n:,} respondents):\n\n"
+        f"Global silhouette: {sil_overall:.4f} ({quality}) -- {interpretation}\n"
+        f"Per-cluster silhouette:\n{per_cluster_lines}\n"
+        + (f"Weak clusters (sil < 0.25): {', '.join(f'Cluster {c}' for c in weak_clusters)}\n"
+           if weak_clusters else "All clusters above silhouette threshold 0.25\n")
+        + f"Outliers (top {config.OUTLIER_PERCENTILE}th percentile from centroid): "
+        f"{n_outliers} respondents ({n_outliers/n*100:.1f}%)\n"
+        + (f"Cross-method ARI (K-Prototypes vs LPA): {ari:.4f} ({ari_quality}) -- {ari_interp}\n"
+           if ari is not None else "ARI: not computed (single solution)\n")
+        + "\nIn 3-5 sentences: interpret the silhouette quality, assess cross-method "
+        "agreement, characterize what outliers likely represent, identify any "
+        "clusters requiring careful handling, and give your overall validation verdict."
+    )
+    reasoning = call_llm(prompt, system=system)
 
     return {
         "silhouette_overall": round(sil_overall, 4),

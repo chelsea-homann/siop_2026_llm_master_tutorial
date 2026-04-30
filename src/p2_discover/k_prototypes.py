@@ -37,7 +37,7 @@ from scipy.stats import zscore
 from sklearn.metrics import silhouette_score
 
 from src import config
-from src.utils import audit_entry
+from src.utils import audit_entry, call_llm
 
 
 # ── Private helpers ──────────────────────────────────────────────────────
@@ -273,7 +273,7 @@ def run_k_prototypes(df, cat_cols=None, num_cols=None, k_range=None):
         "silhouette_scores": {int(k): round(v, 4) for k, v in sil_scores.items()},
     }
 
-    # ── Build reasoning narrative ──────────────────────────────────
+    # ── Build reasoning via LLM ────────────────────────────────────
     n_respondents = len(df_work)
     cluster_sizes = [int((labels == c).sum()) for c in range(k_selected)]
     cluster_pcts = [round(s / n_respondents * 100, 1) for s in cluster_sizes]
@@ -284,26 +284,38 @@ def run_k_prototypes(df, cat_cols=None, num_cols=None, k_range=None):
         "fair" if best_sil > 0.25 else
         "weak"
     )
-    reasoning_parts = [
-        f"K-Prototypes clustering (Huang, 1998) on {n_respondents:,} "
-        f"respondents with {len(num_cols)} numeric and {len(cat_cols)} "
-        f"categorical features.",
-        f"Gamma (categorical weight) set to {gamma:.3f} based on mean SD "
-        f"of standardized numeric features.",
-        rationale,
-        f"Selected solution has {k_selected} clusters with sizes: "
-        + ", ".join(f"n={s} ({p}%)" for s, p in zip(cluster_sizes, cluster_pcts))
-        + ".",
-        f"Silhouette score at K={k_selected}: {best_sil:.3f} ({sil_quality} "
-        f"separation per Rousseeuw, 1987).",
-    ]
-    if any(p < 5 for p in cluster_pcts):
-        small = [f"Cluster {i}" for i, p in enumerate(cluster_pcts) if p < 5]
-        reasoning_parts.append(
-            f"Note: {', '.join(small)} contain(s) < 5% of respondents. "
-            f"Small clusters may be unstable or represent outlier groups."
+    small_clusters = [f"Cluster {i}" for i, p in enumerate(cluster_pcts) if p < 5]
+
+    profile_lines = []
+    for _, row in profiles.iterrows():
+        dims = ", ".join(
+            f"{c}={row[c]:.2f}" for c in num_cols if c in row.index
         )
-    reasoning = " ".join(reasoning_parts)
+        profile_lines.append(f"  Cluster {int(row['cluster'])} (n={int(row['n'])}, {row['pct']}%): {dims}")
+
+    system = (
+        "You are the K-Prototypes agent, a mixed-data clustering specialist for "
+        "I-O psychology research (Huang, 1998). Provide expert commentary on the "
+        "clustering solution in 3-5 sentences. Justify the K selection, interpret "
+        "each cluster profile in plain language, note stability concerns, and "
+        "give a verdict for the I-O psychologist's Gate 2 decision."
+    )
+    prompt = (
+        f"Review this K-Prototypes clustering solution ({n_respondents:,} respondents, "
+        f"{len(num_cols)} numeric + {len(cat_cols)} categorical features):\n\n"
+        f"K selected: {k_selected}  |  Selection rationale: {rationale}\n"
+        f"Gamma: {gamma:.3f}  |  Elbow K: {elbow_k}  "
+        f"|  Best silhouette K: {best_sil_k}\n"
+        f"Global silhouette at K={k_selected}: {best_sil:.3f} ({sil_quality})\n"
+        f"Cluster sizes: {', '.join(f'Cluster {i}: n={s} ({p}%)' for i, (s, p) in enumerate(zip(cluster_sizes, cluster_pcts)))}\n"
+        + (f"Small clusters (<5%): {', '.join(small_clusters)}\n" if small_clusters else "")
+        + f"\nCluster profiles (mean Z-scores):\n"
+        + "\n".join(profile_lines)
+        + "\n\nIn 3-5 sentences: justify the K selection, interpret each cluster "
+        "in plain language for an I-O psychologist, flag any stability concerns, "
+        "and give your verdict for Gate 2."
+    )
+    reasoning = call_llm(prompt, system=system)
 
     return {
         "labels": labels,

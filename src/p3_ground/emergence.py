@@ -23,7 +23,7 @@ import numpy as np
 import pandas as pd
 
 from src import config
-from src.utils import audit_entry, call_llm, load_mock
+from src.utils import audit_entry, call_llm
 
 
 # ── Private helpers ──────────────────────────────────────────────────────
@@ -65,17 +65,10 @@ def _analyse_profiles_vs_codebook(cluster_profiles, codebook_constructs):
 
 
 def _llm_classify_themes(candidates, codebook_constructs):
-    """Use the LLM to classify each candidate as new, variant, or noise.
-
-    In mock mode this returns pre-generated classifications from
-    the ``emergence_output.json`` file.
-    """
-    if config.MOCK_MODE:
-        return load_mock("emergence_output.json")
-
+    """Use the LLM to classify each candidate as NEW, VARIANT, or NOISE."""
     prompt_parts = [
-        "You are an I-O psychologist with knowledge of construct validation, reviewing candidate emergent themes "
-        "from a workforce survey clustering analysis.",
+        "You are an I-O psychologist with knowledge of construct validation, "
+        "reviewing candidate emergent themes from a workforce survey clustering analysis.",
         "",
         "Codebook constructs: " + ", ".join(codebook_constructs),
         "",
@@ -90,16 +83,16 @@ def _llm_classify_themes(candidates, codebook_constructs):
         prompt_parts.append(f"  Cluster {c['cluster']}: {c['pattern']}")
 
     prompt_parts.append(
-        "\nRespond as JSON: [{\"cluster\": N, \"classification\": \"...\", "
-        "\"reasoning\": \"...\"}]"
+        '\nRespond as JSON: [{"cluster": N, "classification": "...", '
+        '"reasoning": "...", "confidence": 0.0}]'
     )
     prompt = "\n".join(prompt_parts)
     system = (
-        "You are an I-O psychologist with skills in construct validation. "
-        "Respond only with the requested JSON."
+        "You are an I-O psychologist with expertise in construct validation. "
+        "Respond only with the requested JSON array."
     )
 
-    return call_llm(prompt, system=system, mock_key="emergence_output.json")
+    return call_llm(prompt, system=system)
 
 
 # ── Public entry points ──────────────────────────────────────────────────
@@ -152,37 +145,47 @@ def detect_emergent_themes(cluster_profiles, codebook_constructs=None,
     audit.append(
         audit_entry(
             "Ground", "Emergence", "Theme classification",
-            {"mode": "mock" if config.MOCK_MODE else "live"},
+            {"n_candidates": len(candidates)},
         )
     )
 
-    # ── Build reasoning narrative ──────────────────────────────────
+    # ── Build reasoning via LLM ────────────────────────────────────
     n_cand = len(candidates)
+    system_r = (
+        "You are the Emergence agent for an I-O psychology pipeline "
+        "(Braun & Clarke, 2006; Glaser & Strauss, 2017). Summarize the "
+        "cross-sectional theme scan results in 2-4 sentences. Interpret "
+        "what any emergent themes mean for the organization and give a "
+        "clear verdict for the I-O psychologist's Gate 3 decision."
+    )
     if n_cand == 0:
-        reasoning = (
-            "Cross-sectional scan found no unusual construct combinations "
-            "across cluster profiles. All clusters align with the "
-            f"{len(codebook_constructs)} codebook constructs. This suggests "
-            "the codebook has adequate coverage for the current data."
+        prompt_r = (
+            f"Cross-sectional scan of {len(codebook_constructs)} codebook "
+            f"constructs found 0 candidate emergent themes -- all cluster "
+            f"profiles align with established constructs. In 2 sentences, "
+            "interpret what this means for codebook coverage and Gate 3."
         )
     else:
-        reasoning_parts = [
-            f"Cross-sectional scan identified {n_cand} candidate emergent "
-            f"theme(s) based on unusual construct combinations in cluster "
-            f"profiles (Braun & Clarke, 2006; Glaser & Strauss, 2017).",
-        ]
-        for c in candidates:
-            reasoning_parts.append(
-                f"Cluster {c.get('cluster', '?')}: {c.get('pattern', 'unknown pattern')}."
+        candidate_lines = "\n".join(
+            f"  Cluster {c.get('cluster', '?')}: {c.get('pattern', '?')}"
+            for c in candidates
+        )
+        classifications = ""
+        if theme_report and isinstance(theme_report, list):
+            classifications = "\nLLM classifications:\n" + "\n".join(
+                f"  Cluster {t.get('cluster', '?')}: {t.get('classification', '?')} -- "
+                f"{t.get('reasoning', '')[:120]}"
+                for t in theme_report
             )
-        if theme_report:
-            reasoning_parts.append(
-                "Each candidate was classified by the LLM as NEW (genuinely "
-                "novel theme), VARIANT (existing construct in unusual "
-                "combination), or NOISE (statistical artifact). "
-                "All candidates are flagged for human review at Gate 3."
-            )
-        reasoning = " ".join(reasoning_parts)
+        prompt_r = (
+            f"Cross-sectional scan identified {n_cand} candidate emergent theme(s):\n"
+            f"{candidate_lines}"
+            f"{classifications}\n\n"
+            "In 2-4 sentences: interpret what these patterns mean for the "
+            "organization, distinguish genuine novelty from statistical artifacts, "
+            "and give your verdict for the I-O psychologist's Gate 3 decision."
+        )
+    reasoning = call_llm(prompt_r, system=system_r)
 
     return {
         "candidates": candidates,

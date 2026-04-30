@@ -172,7 +172,7 @@ def check_api():
         print(f"  {PASS} ANTHROPIC_API_KEY is set ({masked})")
         return True
     else:
-        print(f"  {SKIP} No ANTHROPIC_API_KEY found (optional -- mock mode will be used)")
+        print(f"  {SKIP} No ANTHROPIC_API_KEY found -- set this variable to run the pipeline")
         return True
 
 

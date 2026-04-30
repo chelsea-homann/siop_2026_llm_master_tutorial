@@ -8,8 +8,8 @@ the agent applies the epistemic risk mitigation protocol from
 Nguyen & Welch (2025) to guard against anthropomorphic
 interpretation, fabricated quotations, and the Oracle Effect.
 
-In mock mode the agent returns realistic pre-generated personas
-stored in ``narrator_output.json``.
+All persona generation uses the Anthropic API (ANTHROPIC_API_KEY
+must be set).
 
 References
 ----------
@@ -21,7 +21,7 @@ Nguyen, D. C. & Welch, C. (2025). Generative artificial
 import json
 
 from src import config
-from src.utils import audit_entry, call_llm, load_mock
+from src.utils import audit_entry, call_llm
 
 
 # ── Private helpers ──────────────────────────────────────────────────────
@@ -122,27 +122,6 @@ def generate_personas(cluster_profiles, construct_scores=None,
 
     n_clusters = len(cluster_profiles)
 
-    # ── Mock mode ───────────────────────────────────────────────────
-    if config.MOCK_MODE:
-        personas = load_mock("narrator_output.json")
-        n_p = len(personas) if isinstance(personas, list) else 0
-        audit.append(
-            audit_entry(
-                "Write", "Narrator", "Generated personas (mock)",
-                {"n_personas": n_p},
-            )
-        )
-        reasoning = (
-            f"Generated {n_p} persona narratives from {n_clusters} cluster "
-            f"profiles (mock mode). Each persona follows the epistemic risk "
-            f"mitigation protocol (Nguyen & Welch, 2025): claims are anchored "
-            f"in centroid values, uncertainty is stated explicitly, and "
-            f"policy-experience mismatches are flagged. The I-O psychologist "
-            f"retains final interpretive authority over all narratives."
-        )
-        return {"personas": personas, "reasoning": reasoning, "audit_entries": audit}
-
-    # ── Live mode ───────────────────────────────────────────────────
     prompt, system = _build_prompt(
         cluster_profiles, construct_scores, policy_context, codebook,
     )
@@ -167,23 +146,20 @@ def generate_personas(cluster_profiles, construct_scores=None,
     n_p = len(personas)
     audit.append(
         audit_entry(
-            "Write", "Narrator", "Generated personas (live)",
+            "Write", "Narrator", "Generated personas",
             {"n_personas": n_p},
         )
     )
 
     has_policy = policy_context is not None
     reasoning = (
-        f"Generated {n_p} persona narratives from {n_clusters} cluster "
-        f"profiles using live LLM inference. Each narrative is anchored in "
-        f"centroid values and follows the epistemic risk mitigation protocol "
-        f"(Nguyen & Welch, 2025). "
-        + (f"Policy context from {len(policy_context)} constructs was "
-           f"incorporated via RAG retrieval. " if has_policy else
-           "No policy context was provided. ")
-        + f"All narratives include epistemic notes disclosing evidence basis "
-        f"and limitations. The I-O psychologist retains final interpretive "
-        f"authority."
+        f"Generated {n_p} persona narratives from {n_clusters} cluster profiles. "
+        f"Each narrative is anchored in centroid values and follows the epistemic "
+        f"risk mitigation protocol (Nguyen & Welch, 2025): no unfounded inferences, "
+        f"no fabricated quotes, statistical anchoring for every claim. "
+        + (f"Policy context from {len(policy_context)} constructs incorporated via RAG. "
+           if has_policy else "No policy context provided. ")
+        + "The I-O psychologist retains final interpretive authority."
     )
 
     return {"personas": personas, "reasoning": reasoning, "audit_entries": audit}

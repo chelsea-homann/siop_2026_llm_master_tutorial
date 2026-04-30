@@ -29,7 +29,7 @@ import pandas as pd
 from scipy.stats import skew, kurtosis
 
 from src import config
-from src.utils import audit_entry
+from src.utils import audit_entry, call_llm
 
 
 # ── Private helpers ──────────────────────────────────────────────────────
@@ -341,61 +341,38 @@ def run_data_steward(df, survey_cols=None, cat_cols=None):
         "confidence": confidence,
     }
 
-    # ── Build reasoning narrative ──────────────────────────────────
+    # ── Build reasoning via LLM ────────────────────────────────────
     removal_pct = round(removed_count / max(original_n, 1) * 100, 1)
-    reasoning_parts = [
-        f"Screened {original_n:,} respondents through a multi-hurdle "
-        f"quality protocol (Papp et al., 2026; Curran, 2016).",
-        f"Removed {removed_count} respondents ({removal_pct}%) for "
-        f"careless responding. Each tripped {config.CARELESS_HURDLES}+ "
-        f"independent hurdles: longstring analysis flagged "
-        f"{careless_summary['longstring_flagged']}, IRV analysis flagged "
-        f"{careless_summary['irv_flagged']}.",
-    ]
-    if removal_pct < 2:
-        reasoning_parts.append(
-            "The removal rate is below 2%, which is unusually low. "
-            "Consider whether screening thresholds are too conservative."
-        )
-    elif removal_pct > 8:
-        reasoning_parts.append(
-            "The removal rate exceeds 8%, which is above the typical "
-            "range for organizational surveys. Investigate whether data "
-            "collection conditions contributed to elevated careless responding."
-        )
-    else:
-        reasoning_parts.append(
-            f"The {removal_pct}% removal rate falls within the typical "
-            f"2-8% range for organizational surveys (Curran, 2016)."
-        )
-    if sparse_cols:
-        reasoning_parts.append(
-            f"Sparsity gate: {len(sparse_cols)} column(s) exceeded the "
-            f"{config.SPARSITY_THRESHOLD * 100:.0f}% missing threshold: "
-            f"{', '.join(sparse_cols)}."
-        )
-    else:
-        reasoning_parts.append(
-            "All columns passed the sparsity gate (no column exceeded "
-            f"{config.SPARSITY_THRESHOLD * 100:.0f}% missing)."
-        )
-    if excluded_cols:
-        reasoning_parts.append(
-            f"Variance gate: {len(excluded_cols)} item(s) excluded for "
-            f"SD below {config.VARIANCE_THRESHOLD_SD}: {', '.join(excluded_cols)}. "
-            f"Low-variance items cannot discriminate between groups."
-        )
-    else:
-        reasoning_parts.append(
-            "All survey items passed the variance gate (SD >= "
-            f"{config.VARIANCE_THRESHOLD_SD})."
-        )
-    reasoning_parts.append(
-        f"Final clean dataset: {len(df_clean):,} respondents, "
-        f"{len(retained_survey)} survey items retained. "
-        f"Data quality confidence: {confidence:.2%}."
+    dist_issues = [d["column"] for d in dist_report if d["issues"]]
+
+    system = (
+        "You are the Data Steward agent for I-O psychology survey research. "
+        "Apply the Survey Data Quality Evaluation Model (Papp et al., 2026) "
+        "and Osborne (2013) best practices. Provide expert commentary on data "
+        "quality screening results in 3-5 sentences. Be specific, cite "
+        "statistics, flag any concerns, and give a clear verdict suitable for "
+        "the I-O psychologist's Gate 1 decision."
     )
-    reasoning = " ".join(reasoning_parts)
+    prompt = (
+        f"Review these survey quality screening results ({original_n:,} respondents) "
+        f"and provide expert analysis:\n\n"
+        f"Careless responding: {careless_summary['longstring_flagged']} longstring "
+        f"flags, {careless_summary['irv_flagged']} IRV flags; "
+        f"{removed_count} respondents removed ({removal_pct}%) via multi-hurdle "
+        f"criterion (Curran, 2016).\n"
+        f"Sparsity gate: {len(sparse_cols)} column(s) exceeded threshold "
+        f"({', '.join(sparse_cols) if sparse_cols else 'none'}).\n"
+        f"Variance gate: {len(excluded_cols)} item(s) excluded "
+        f"({', '.join(excluded_cols) if excluded_cols else 'none'}); "
+        f"{len(retained_survey)} items retained "
+        f"({', '.join(retained_survey)}).\n"
+        f"Distribution issues: {len(dist_issues)} column(s) flagged "
+        f"({', '.join(dist_issues) if dist_issues else 'none'}).\n"
+        f"Data quality confidence score: {confidence:.2%}.\n\n"
+        "In 3-5 sentences: assess the removal rate, evaluate item retention, "
+        "note any concerns, and give your overall data quality verdict for Gate 1."
+    )
+    reasoning = call_llm(prompt, system=system)
 
     return {
         "clean_df": df_clean,

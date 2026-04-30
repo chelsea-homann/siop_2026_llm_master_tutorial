@@ -8,7 +8,7 @@
       "Cared_About": {"value": 0.62, "direction": "high"},
       "Excited": {"value": 0.08, "direction": "moderate"},
       "Helpful_Info": {"value": 0.55, "direction": "high"},
-      "Trust_Leaders": {"value": -0.71, "direction": "low"},
+      "Trust_Leadership": {"value": -0.71, "direction": "low"},
       "Morale": {"value": -0.12, "direction": "moderate"}
     },
     "demographic_mode": {
@@ -17,7 +17,7 @@
       "FLSA": "Exempt",
       "Tenure": "3-5y"
     },
-    "narrative": "This segment represents nearly a third of Meridian Technologies' workforce. Members report feeling cared about by their immediate teams (Cared_About z = 0.62) and receiving useful operational information (Helpful_Info z = 0.55), but they express notably low trust in senior leadership (Trust_Leaders z = -0.71). Their morale sits near the sample average. This combination suggests employees who are well-supported locally but disconnected from the organisation's strategic direction.",
+    "narrative": "This segment represents nearly a third of Meridian Technologies' workforce. Members report feeling cared about by their immediate teams (Cared_About z = 0.62) and receiving useful operational information (Helpful_Info z = 0.55), but they express notably low trust in senior leadership (Trust_Leadership z = -0.71). Their morale sits near the sample average. This combination suggests employees who are well-supported locally but disconnected from the organisation's strategic direction.",
     "policy_mismatches": [
       "Meridian's 2025 Leadership Transparency Initiative aimed to increase leader visibility, yet this segment still reports low trust. The policy may not have reached Operations-level employees effectively."
     ],
@@ -32,7 +32,7 @@
       "Cared_About": {"value": 0.74, "direction": "high"},
       "Excited": {"value": 0.89, "direction": "high"},
       "Helpful_Info": {"value": 0.61, "direction": "high"},
-      "Trust_Leaders": {"value": 0.82, "direction": "high"},
+      "Trust_Leadership": {"value": 0.82, "direction": "high"},
       "Morale": {"value": 0.91, "direction": "high"}
     },
     "demographic_mode": {
@@ -54,7 +54,7 @@
       "Cared_About": {"value": -0.22, "direction": "moderate"},
       "Excited": {"value": -0.58, "direction": "low"},
       "Helpful_Info": {"value": -0.83, "direction": "low"},
-      "Trust_Leaders": {"value": 0.15, "direction": "moderate"},
+      "Trust_Leadership": {"value": 0.15, "direction": "moderate"},
       "Morale": {"value": -0.44, "direction": "moderate"}
     },
     "demographic_mode": {
@@ -78,7 +78,7 @@
       "Cared_About": {"value": -0.85, "direction": "low"},
       "Excited": {"value": -0.67, "direction": "low"},
       "Helpful_Info": {"value": -0.31, "direction": "moderate"},
-      "Trust_Leaders": {"value": -0.92, "direction": "low"},
+      "Trust_Leadership": {"value": -0.92, "direction": "low"},
       "Morale": {"value": -1.04, "direction": "low"}
     },
     "demographic_mode": {
@@ -87,7 +87,7 @@
       "FLSA": "Non-Exempt",
       "Tenure": "<1y"
     },
-    "narrative": "The most at-risk segment scores low on Cared_About (z = -0.85), Trust_Leaders (z = -0.92), and Morale (z = -1.04). The modal demographic is entry-level Sales employees with less than one year of tenure. Multiple low scores across relational and motivational dimensions suggest a segment experiencing broad disengagement rather than a single localised issue. The low tenure and entry-level composition indicate that onboarding and early-career support warrant attention.",
+    "narrative": "The most at-risk segment scores low on Cared_About (z = -0.85), Trust_Leadership (z = -0.92), and Morale (z = -1.04). The modal demographic is entry-level Sales employees with less than one year of tenure. Multiple low scores across relational and motivational dimensions suggest a segment experiencing broad disengagement rather than a single localised issue. The low tenure and entry-level composition indicate that onboarding and early-career support warrant attention.",
     "policy_mismatches": [
       "Meridian's mentorship programme currently targets employees with 1+ year of tenure, potentially missing this early-career segment entirely."
     ],

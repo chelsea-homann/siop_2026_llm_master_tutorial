@@ -50,7 +50,7 @@
     ],
     "llm_assessment": "Meridian has formal information-sharing channels. The 41% open rate for the weekly digest suggests that most employees do not actively engage with written communications, which may explain low Helpful_Info scores in some segments."
   },
-  "Trust_Leaders": {
+  "Trust_Leadership": {
     "passages": [
       {
         "text": "Meridian's Leadership Transparency Initiative (LTI), launched in January 2025, requires all directors and above to publish monthly 'State of the Team' updates visible to their entire reporting chain. The updates must include at least one challenge or setback alongside accomplishments.",

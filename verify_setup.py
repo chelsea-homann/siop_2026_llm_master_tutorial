@@ -49,7 +49,7 @@ def check_data():
 
     ok = True
 
-    for filename in ["survey_baseline.csv", "survey_followup.csv"]:
+    for filename in ["baseline_survey_data_synthetic.csv", "survey_followup.csv"]:
         path = os.path.join("synthetic_data", filename)
         if not os.path.exists(path):
             print(f"  {FAIL} {path} -- not found")
@@ -61,7 +61,7 @@ def check_data():
 
         expected_cols = [
             "Business Unit", "Level", "FLSA", "Tenure",
-            "Cared_About", "Excited", "Helpful_Info", "Trust_Leaders", "Morale",
+            "Cared_About", "Excited", "Helpful_Info", "Trust_Leadership", "Morale",
         ]
         missing = [c for c in expected_cols if c not in df.columns]
         if missing:

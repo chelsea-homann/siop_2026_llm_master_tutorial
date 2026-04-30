@@ -83,6 +83,8 @@ NUMERIC_COLS = [
     "Cared_About",
     "Excited",
     "Helpful_Info",
-    "Trust_Leaders",
+    "Trust_Leadership",
     "Morale",
 ]
+ATTENTION_CHECK_COLS = ["Attention check 1", "Attention check 2"]
+COMMENTS_COL = "Comments"

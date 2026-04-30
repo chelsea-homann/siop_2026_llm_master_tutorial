@@ -2,7 +2,7 @@
   {
     "cluster": 0,
     "classification": "VARIANT",
-    "pattern": "High: Cared_About, Helpful_Info + Low: Trust_Leaders",
+    "pattern": "High: Cared_About, Helpful_Info + Low: Trust_Leadership",
     "reasoning": "This combination represents a known phenomenon in I-O psychology: localised support without strategic trust. The constituent constructs (feeling cared about, informational support, leadership trust) are all part of the established codebook. However, the specific High-Care/Low-Trust combination is a recognisable variant sometimes called 'micro-climate loyalty,' where employees feel attached to their immediate team while distrusting the broader organisation. This does not constitute a new construct but rather an informative pattern across existing ones.",
     "confidence": 0.82,
     "literature_note": "Consistent with research on local vs. distal trust (Dirks & Ferrin, 2002) and organisational identification at multiple levels (Riketta & Van Dick, 2005)."
@@ -18,7 +18,7 @@
   {
     "cluster": 3,
     "classification": "NEW",
-    "pattern": "High: (none) + Low: Cared_About, Trust_Leaders, Morale",
+    "pattern": "High: (none) + Low: Cared_About, Trust_Leadership, Morale",
     "reasoning": "While each individual construct is established, the convergence of low scores across all relational and motivational dimensions in a segment concentrated among entry-level, short-tenure employees suggests a distinct experience that the codebook does not specifically address: 'Onboarding Disillusionment.' This theme captures the gap between recruitment messaging and early employment reality. It differs from general disengagement because it is tenure-specific and potentially reversible with targeted onboarding improvements.",
     "confidence": 0.65,
     "literature_note": "Related to but distinct from newcomer adjustment (Bauer et al., 2007) and psychological contract breach (Robinson & Morrison, 2000). The breadth of low scores across multiple constructs simultaneously is the distinguishing feature."

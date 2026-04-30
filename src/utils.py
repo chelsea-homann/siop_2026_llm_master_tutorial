@@ -237,6 +237,81 @@ def save_phase_outputs(phase_dir, report_md=None, dataframes=None,
     return written
 
 
+def write_success_report(path, phase, agents, status, metrics, artifacts, notes=""):
+    """Write a plain-text agent success report to disk.
+
+    Parameters
+    ----------
+    path : str
+        Destination file path (created with parent dirs).
+    phase : str
+        Pipeline phase label (e.g. "Phase 1 -- Ingest and Clean").
+    agents : str or list[str]
+        Agent name(s) responsible for this phase.
+    status : str
+        One-line status (e.g. "COMPLETE -- Gate 1: yes").
+    metrics : dict
+        Key-value pairs summarising quantitative outcomes.
+    artifacts : list[str]
+        Relative paths of every file written by this phase.
+    notes : str, optional
+        Methodology or caveats note appended at the bottom.
+
+    Returns
+    -------
+    str
+        The path that was written.
+    """
+    agent_str = agents if isinstance(agents, str) else ", ".join(agents)
+    lines = [
+        "=" * 65,
+        "AGENT SUCCESS REPORT",
+        "=" * 65,
+        f"Phase:     {phase}",
+        f"Agent(s):  {agent_str}",
+        f"Status:    {status}",
+        f"Timestamp: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
+        f"Model:     {config.MODEL}",
+        "",
+        "METRICS",
+        "-" * 40,
+    ]
+    for k, v in metrics.items():
+        lines.append(f"  {k:<35} {v}")
+    lines += ["", "ARTIFACTS PRODUCED", "-" * 40]
+    for i, a in enumerate(artifacts, 1):
+        lines.append(f"  {i:2d}. {a}")
+    if notes:
+        lines += ["", "NOTES", "-" * 40, f"  {notes}"]
+    lines += ["", "=" * 65, ""]
+
+    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as fh:
+        fh.write("\n".join(lines))
+    return path
+
+
+def save_json(data, path):
+    """Write *data* as pretty-printed JSON (no metadata envelope).
+
+    Parameters
+    ----------
+    data : any JSON-serialisable object
+        Data to write.
+    path : str
+        Destination file path (parent dirs created automatically).
+
+    Returns
+    -------
+    str
+        The path that was written.
+    """
+    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as fh:
+        json.dump(data, fh, indent=2, default=str)
+    return path
+
+
 def save_audit_csv(audit_trail, path):
     """Save the audit trail as a CSV for easy review in Excel.
 

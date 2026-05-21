@@ -48,3 +48,7 @@ outputs/**
 
 # Claude Code / session working files
 .claude/
+
+# Local skills (installed but not committed)
+.agents/
+skills-lock.json
